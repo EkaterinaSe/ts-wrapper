@@ -41,9 +41,22 @@ class setup(object):
             # [start, end) --> [start, end]
             self.abund_list = np.hstack((self.abund_list,  self.end_abund ))
 
-        print("Reading a list of model atmospheres from %s" %( self.use_atmos ))
-        self.atmos_list = np.loadtxt(self.use_atmos, ndmin=1, dtype=str, usecols=(0))
-        self.atmos_list = [ self.atmos_path + F"/{x}" for x in self.atmos_list ]
+        if self.interpolate:
+            print(f"Model atmosphere will be created using input parameters")
+            print(f"Reading parameters from {self.use_atmos}")
+            input = np.loadtxt(self.use_atmos, dtype=float, ndmin=1)
+            self.atmos_input_params = {  }
+            i = 0
+            for k in['teff', 'logg', 'feh', 'vturb']:
+                self.atmos_input_params.update({
+                    k : input[:, i]
+                })
+                i +=1
+            exit(1)
+        else:
+            print(f"Reading a list of model atmospheres from {self.use_atmos}")
+            self.atmos_list = np.loadtxt(self.use_atmos, ndmin=1, dtype=str, usecols=(0))
+            self.atmos_list = [ self.atmos_path + F"/{x}" for x in self.atmos_list ]
 
         print('Element: %s' %self.element)
         print(F"Use {len(self.abund_list)} abundances")
