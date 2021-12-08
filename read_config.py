@@ -42,7 +42,7 @@ class setup(object):
             self.abund_list = np.hstack((self.abund_list,  self.end_abund ))
 
         if self.interpolate:
-            print(f"Model atmosphere will be created using input parameters")
+            print(f"Model atmosphere(s) will be created using input parameters")
             print(f"Reading parameters from {self.use_atmos}")
             input = np.loadtxt(self.use_atmos, dtype=float, ndmin=1)
             self.atmos_input_params = {  }
