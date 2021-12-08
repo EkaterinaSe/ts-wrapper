@@ -14,6 +14,10 @@ class setup(object):
         """
         Reads specifications for the TS run from a config file
         """
+        "Some default keys:"
+        self.debug = 0
+        self.interpolate = 0
+
         print('Reading configuration file %s' %(file ) )
         for line in open(file, 'r'):
             line=line.strip()
@@ -29,12 +33,6 @@ class setup(object):
                         self.__dict__[key] = float(val)
                     else:
                         self.__dict__[key] = int(val)
-
-        debug = False
-        if 'debug' in self.__dict__.keys():
-            if self.debug == 1:
-                debug = True
-        self.debug = debug
 
         if self.use_abund == 1:
             self.abund_list = [self.new_abund]
