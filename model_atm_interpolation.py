@@ -26,7 +26,9 @@ def get_all_models(models_path, format='m1d', debug = False):
     'teff':[], 'logg':[], 'feh':[], 'path':[], 'file':[]
     }
     if os.path.isfile(list_file) and os.path.getsize(list_file) > 0:
-        pass
+        params['teff'], params['logg'], params['feh'] = np.loadtxt(list_file, usecols=(0,1,2), unpack=True)
+        params['file'] = np.loadtxt(list_file, usecols=(3), dtype=str)
+
     else:
         print(f"Checking all model atmospheres under {models_path}")
 
@@ -73,7 +75,7 @@ Try setting debug = 1 in config file. Check that expected format of model atmosp
                 f.write(f"{params['teff'][i]:8.0f} {params['logg'][i]:8.3f} \
         {params['feh'][i]:8.3f} {params['file'][i]} \n")
 
-        return params
+    return params
 
 def interpolate_ma_grid(setup):
     get_all_models(setup.atmos_path, format=setup.atmos_format, debug=setup.debug)
