@@ -15,7 +15,7 @@ import read_config
 from atmos_package import model_atmosphere
 
 
-def get_all_models(models_path, format='m1d', debug = False):
+def get_all_ma_parameters(models_path, format='m1d', debug = False):
     """
     Get a list of all available model atmopsheres and their parameters
     for later interpolation
@@ -77,5 +77,41 @@ Try setting debug = 1 in config file. Check that expected format of model atmosp
 
     return params
 
+
+def create_cube(input_par, all_par):
+    """
+    Find a cube in the grid of model atmospheres for interpolation
+    by mimnimising the [normalised] distance from input parameters
+    to the grid points
+
+    Input:
+    input_par (dict) -- parameters to which a grid should be interpolated, 1 point
+    all_par (dict) -- parameters of the full model atmospheres grid,
+                        from call to get_all_ma_parameters()
+    """
+
+    N = len(input_par.keys())
+    M = [len(v) for v in all_par.values()][0]
+
+    dist = np.zeros( shape=(N,M) )
+    i = 0
+    for k, value in input_par.items():
+        print(k, value)
+        dist[i, : ] = ( all_par[k] - value )/ max(abs(all_par[k])) # normalise the distance
+        i += 1
+
+    # collapse the dimension of parameters
+    tot_dist = np.zeros(M)
+    for j in range(N):
+        tot_dist[:] = tot_dist[:] + dist[j, :]**2
+
 def interpolate_ma_grid(setup):
-    get_all_models(setup.atmos_path, format=setup.atmos_format, debug=setup.debug)
+    all_parameters = get_all_ma_parameters(setup.atmos_path,  \
+                        format=setup.atmos_format, debug=setup.debug)
+
+    input_parameters = {
+        'teff' : 8000,
+        'logg' : 3.5,
+        'feh'  : -2.0
+    }
+    create_cube(input_parameters, all_parameters)
