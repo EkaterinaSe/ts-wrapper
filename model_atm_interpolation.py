@@ -23,7 +23,7 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
     """
     list_file = f"{models_path}/all_models.txt"
     params = {
-    'teff':[], 'logg':[], 'feh':[], 'path':[], 'file':[]
+    'teff':[], 'logg':[], 'feh':[], 'file':[]
     }
     if os.path.isfile(list_file) and os.path.getsize(list_file) > 0:
         # TODO: automise reading input keys
@@ -174,7 +174,13 @@ def create_cube(input_par, all_par, debug=False):
                 print(message)
         return ind, [all_par['file'][i] for i in ind], params_to_interpolate
 
-# def interpolate_cube()
+def interpolate_cube():
+    """
+    Interpolate N model atmospheres with respect to requested parameteres
+
+    Input:
+
+    """
 
 
 def interpolate_ma_grid(atmos_path, atmos_format, debug):
@@ -189,11 +195,17 @@ def interpolate_ma_grid(atmos_path, atmos_format, debug):
 
     ind, names, params_to_interpolate = \
     create_cube(input_parameters, all_parameters, debug=debug)
-
     if params_to_interpolate is not None:
         print(f"Ready to interpolate?")
+        " Clean up the input a bit"
+        inp, all = {}, {}
+        for k in params_to_interpolate:
+            inp.update({ k : input_parameters[k] })
+        for k in all_parameters:
+            all.update({ k : [ all_parameters[k][i] for i in ind ] })
+        interpolate_cube(inp, all)
+        
     else: # model exists, no interpolation
         ma = model_atmosphere(atmos_path + names, format=atmos_format)
-        print('Ready!')
         # TODO: write to file here?
         return ma
