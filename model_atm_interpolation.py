@@ -26,6 +26,7 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
     'teff':[], 'logg':[], 'feh':[], 'path':[], 'file':[]
     }
     if os.path.isfile(list_file) and os.path.getsize(list_file) > 0:
+        # TODO: automise reading input keys
         params['teff'], params['logg'], params['feh'] = np.loadtxt(list_file, usecols=(0,1,2), unpack=True)
         params['file'] = np.loadtxt(list_file, usecols=(3), dtype=str)
 
@@ -157,7 +158,7 @@ def create_cube(input_par, all_par, debug=False):
                     message = message + f"{k}={v}\t"
                 print(message)
             model_int_path = all_par['file'][pos]
-            return [pos], [model_int_path], None
+            return pos, model_int_path, None
     # if interpolation is needed, build a cube
     else:
         cube_size = 2**n_dim
@@ -173,6 +174,8 @@ def create_cube(input_par, all_par, debug=False):
                 print(message)
         return ind, [all_par['file'][i] for i in ind], params_to_interpolate
 
+# def interpolate_cube()
+
 
 def interpolate_ma_grid(setup):
     all_parameters = get_all_ma_parameters(setup.atmos_path,  \
@@ -181,6 +184,14 @@ def interpolate_ma_grid(setup):
     input_parameters = {
         'teff' : 7500,
         'logg' : 4.0,
-        'feh'  : -2.0
+        'feh'  : -2.4
     }
+    ind, names, params_to_interpolate = \
     create_cube(input_parameters, all_parameters, debug=setup.debug)
+    if params_to_interpolate is not None:
+        print(f"Ready to interpolate?")
+    else: # model exists, no interpolation
+        ma = model_atmosphere(setup.atmos_path + names, format=setup.atmos_format)
+        print('Ready!')
+        # TODO: write to file here?
+        return ma
