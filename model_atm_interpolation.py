@@ -177,21 +177,23 @@ def create_cube(input_par, all_par, debug=False):
 # def interpolate_cube()
 
 
-def interpolate_ma_grid(setup):
-    all_parameters = get_all_ma_parameters(setup.atmos_path,  \
-                        format=setup.atmos_format, debug=setup.debug)
+def interpolate_ma_grid(atmos_path, atmos_format, debug):
+    all_parameters = get_all_ma_parameters(atmos_path,  \
+                        format=atmos_format, debug=debug)
 
     input_parameters = {
         'teff' : 7500,
         'logg' : 4.0,
         'feh'  : -2.4
     }
+
     ind, names, params_to_interpolate = \
-    create_cube(input_parameters, all_parameters, debug=setup.debug)
+    create_cube(input_parameters, all_parameters, debug=debug)
+
     if params_to_interpolate is not None:
         print(f"Ready to interpolate?")
     else: # model exists, no interpolation
-        ma = model_atmosphere(setup.atmos_path + names, format=setup.atmos_format)
+        ma = model_atmosphere(atmos_path + names, format=atmos_format)
         print('Ready!')
         # TODO: write to file here?
         return ma
