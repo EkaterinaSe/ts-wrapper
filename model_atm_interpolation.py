@@ -99,13 +99,6 @@ def create_cube(input_par, all_par, debug=False):
         dist[i, : ] = ( all_par[k] - value )/ max(abs(all_par[k])) # normalise the distance
         i += 1
 
-    # collapse the dimension of parameters
-    tot_dist = np.zeros(M)
-    for j in range(N):
-        tot_dist[:] = tot_dist[:] + dist[j, :]**2
-
-    " Create a cube (N-D cube???) of points to be used for interpolation "
-
     """
     Check if any parameter has the same distance to all grid points
     This could mean that
@@ -121,20 +114,25 @@ def create_cube(input_par, all_par, debug=False):
     """
     n_dim = 0
     params_to_interpolate = []
-
     i = 0
     for k, value in input_par.items():
         if np.max(dist[i, :]) == np.min(dist[i, :]):
             if debug:
-                print(f"{k} is {dist[i, :][0] * max(abs(all_par[k])):.0f} far from every point in the grid")
-            pass
-        # elif abs(dist[i, :]).any() < 0.01:
-        #     if debug:
-        #         print(f"{k} is point on") # IDEA: that doesn't mean that exact point will end up in the interpolation cube, does it?
-            # pass
-        else: # add a dimension, aka +2 points to the interpolation n-D cube
+                print(f"{k} is {dist[i, :][0] * max(abs(all_par[k])):.0f} far from EVERY point in the grid")
+            else:
+                pass
+        else: # if not, add a dimension, +2 points to the interpolation n-D cube
             n_dim += 1
             params_to_interpolate.append(k)
+        i += 1
+
+
+    " Collapse the dimension of parameters, only consider iteratable parameters "
+    tot_dist = np.zeros(M)
+    i = 0
+    for k, value in input_par.items():
+        if k in params_to_interpolate:
+            tot_dist[:] = tot_dist[:] + dist[j, :]**2
         i += 1
 
 
