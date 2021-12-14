@@ -105,9 +105,7 @@ def create_cube(input_par, all_par, debug=False):
     parameter is [exactly] equally far from any grid point,
             e.g. the whole grid has the same temperature at each point
     Interpolating over this parameter is obsolette
-    #
-    # Check if any parameter is exactly as the one at [some] grid point
-    # (or within 1%)
+    NOTE: this is more of an exception, than a rule
 
     Save the parameters over which interpolation needs to be done,
     and number of points for the 'cube'
@@ -118,7 +116,7 @@ def create_cube(input_par, all_par, debug=False):
     for k, value in input_par.items():
         if np.max(dist[i, :]) == np.min(dist[i, :]):
             if debug:
-                print(f"{k} is {dist[i, :][0] * max(abs(all_par[k])):.0f} far from EVERY point in the grid")
+                print(f"{k} is {dist[i, :][0] * max(abs(all_par[k])):.2f} far from EVERY point in the grid")
             else:
                 pass
         else: # if not, add a dimension, +2 points to the interpolation n-D cube
@@ -132,20 +130,43 @@ def create_cube(input_par, all_par, debug=False):
     i = 0
     for k, value in input_par.items():
         if k in params_to_interpolate:
-            tot_dist[:] = tot_dist[:] + dist[j, :]**2
+            tot_dist[:] = tot_dist[:] + np.sqrt(dist[i, :]**2)
         i += 1
 
+    " Check if any parameters are exactly as the ones at [some] grid point (or within 0.5%) "
+    if np.any(tot_dist < 0.005):
+        pos = np.argwhere(tot_dist < 0.005)
 
-    cube_size = 2**n_dim
-    ind = np.argpartition(tot_dist, cube_size)[:cube_size]
-    if debug:
-        print(f"Interpolation 'cube': ")
-        print(f"Interpolating over {len(params_to_interpolate):.0f} parameter(s): {params_to_interpolate}")
-        for i in ind:
-            message = f""
-            for k in input_par:
-                message = message + f"{k}={all_par[k][i]} "
-            print(message)
+        if len(pos) > 1: # if more than one grid point matches,
+        # maybe they differ in parameter we don't iterate over, e.g. alpha/fe
+            message = f"Found more than one point in the grid matching input parameters within 0.5%\n"
+            for k in params_to_interpolate:
+                message = message + f"{k}={input_par[k]}\t"
+            message = message + "\n"
+            for p in pos:
+                message = message + f"{all_par['file'][p]} \n"
+            raise Exception(message)
+        else: # congrats, we don't need to iterate
+            pos = pos[0][0]
+            if debug:
+                message = f"{all_par['file'][pos]} exactly matches "
+                for k, v in input_par.items():
+                    message = message + f"{k}={v}\t"
+                print(message)
+            model_int_path = all_par['file'][pos]
+    # if interpolation is needed, build a cube
+    else:
+        cube_size = 2**n_dim
+        # find N=cube_size points with the smallest distance
+        ind = np.argpartition(tot_dist, cube_size)[:cube_size]
+        if debug:
+            print(f"Interpolation 'cube': ")
+            print(f"Interpolating over {len(params_to_interpolate):.0f} parameter(s): {params_to_interpolate}")
+            for i in ind:
+                message = f""
+                for k in input_par:
+                    message = message + f"{k}={all_par[k][i]} "
+                print(message)
 
 
     return
@@ -157,7 +178,7 @@ def interpolate_ma_grid(setup):
 
     input_parameters = {
         'teff' : 7500,
-        'logg' : 3.5,
-        'feh'  : -2.0
+        'logg' : 4.0,
+        'feh'  : -2.4
     }
     create_cube(input_parameters, all_parameters, debug=setup.debug)
