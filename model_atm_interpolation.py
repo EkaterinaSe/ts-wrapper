@@ -88,10 +88,14 @@ def create_cube(input_par, all_par, debug=False):
     input_par (dict) -- parameters to which a grid should be interpolated, 1 point
     all_par (dict) -- parameters of the full model atmospheres grid,
                         from call to get_all_ma_parameters()
+    Return:
+    (list of) index of selected cube points in all_par dictionary,
+    (list of) file names of selected for interpolation models
+    (list of) parameters to interpolate over
     """
 
-    N = len(input_par.keys())
-    M = [len(v) for v in all_par.values()][0]
+    N = len(input_par.keys()) # number of input parameters
+    M = [len(v) for v in all_par.values()][0] # number of points in the grid
 
     dist = np.zeros( shape=(N,M) )
     i = 0
@@ -136,7 +140,6 @@ def create_cube(input_par, all_par, debug=False):
     " Check if any parameters are exactly as the ones at [some] grid point (or within 0.5%) "
     if np.any(tot_dist < 0.005):
         pos = np.argwhere(tot_dist < 0.005)
-
         if len(pos) > 1: # if more than one grid point matches,
         # maybe they differ in parameter we don't iterate over, e.g. alpha/fe
             message = f"Found more than one point in the grid matching input parameters within 0.5%\n"
@@ -146,7 +149,7 @@ def create_cube(input_par, all_par, debug=False):
             for p in pos:
                 message = message + f"{all_par['file'][p]} \n"
             raise Exception(message)
-        else: # congrats, we don't need to iterate
+        else: # congrats, we don't need to iterate, this is our model
             pos = pos[0][0]
             if debug:
                 message = f"{all_par['file'][pos]} exactly matches "
@@ -154,6 +157,7 @@ def create_cube(input_par, all_par, debug=False):
                     message = message + f"{k}={v}\t"
                 print(message)
             model_int_path = all_par['file'][pos]
+            return [pos], [model_int_path], None
     # if interpolation is needed, build a cube
     else:
         cube_size = 2**n_dim
@@ -167,9 +171,7 @@ def create_cube(input_par, all_par, debug=False):
                 for k in input_par:
                     message = message + f"{k}={all_par[k][i]} "
                 print(message)
-
-
-    return
+        return ind, [all_par['file'][i] for i in ind], params_to_interpolate
 
 
 def interpolate_ma_grid(setup):
@@ -179,6 +181,6 @@ def interpolate_ma_grid(setup):
     input_parameters = {
         'teff' : 7500,
         'logg' : 4.0,
-        'feh'  : -2.4
+        'feh'  : -2.0
     }
     create_cube(input_parameters, all_parameters, debug=setup.debug)
