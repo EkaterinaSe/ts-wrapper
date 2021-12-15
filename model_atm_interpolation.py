@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import datetime
 import numpy as np
+from scipy.interpolate import LinearNDInterpolator
 import pickle
 import glob
 import time
@@ -19,20 +20,21 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
     """
     Get a list of all available model atmopsheres and their parameters
     for later interpolation
+    also upload the whole grid, or create the file for the quick upload
     If no list is available, create one by scanning through all available models
     """
-    list_file = f"{models_path}/all_models.txt"
-    params = {
-    'teff':[], 'logg':[], 'feh':[], 'file':[]
-    }
-    if os.path.isfile(list_file) and os.path.getsize(list_file) > 0:
-        # TODO: automise reading input keys
-        params['teff'], params['logg'], params['feh'] = np.loadtxt(list_file, usecols=(0,1,2), unpack=True)
-        params['file'] = np.loadtxt(list_file, usecols=(3), dtype=str)
+    # list_file = f"{models_path}/all_models_list.txt"
+    save_file = f"{models_path}/all_models_save.pkl"
 
+    params = {
+    'teff':[], 'logg':[], 'feh':[], 'vturb':[], 'file':[], 'structure':[]
+    }
+
+    if os.path.isfile(save_file) and os.path.getsize(save_file) > 0:
+        with open(save_file, 'rb') as f:
+            params = pickle.load(f)
     else:
         print(f"Checking all model atmospheres under {models_path}")
-
         with os.scandir(models_path) as all_files:
             for entry in all_files:
                 if not entry.name.startswith('.') and entry.is_file():
@@ -42,9 +44,9 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
                         params['teff'].append(ma.teff)
                         params['logg'].append(ma.logg)
                         params['feh'].append(ma.feh)
-                        params['path'].append(file_path)
+                        params['vturb'].append(ma.vturb[0])
                         params['file'].append(entry.name)
-
+                        params['structure'].append(np.vstack((ma.depth_scale, ma.temp, ma.ne, ma.vturb)))
                     except: # if it's not a model atmosphere file, or format is wrong
                         if debug:
                             print(f"Cound not read model file {entry.name} for model atmosphere")
@@ -53,7 +55,7 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
             params[k] = np.array(params[k])
 
         " Check if any model atmosphere was successfully read "
-        if len(params['teff']) == 0:
+        if len(params['file']) == 0:
             raise Exception(f"no model atmosphere parameters were retrived from files under {models_path}.\
 Try setting debug = 1 in config file. Check that expected format of model atmosphere is set correctly.")
 
@@ -67,19 +69,13 @@ Try setting debug = 1 in config file. Check that expected format of model atmosp
                         warnings.warn(message, UserWarning)
             except TypeError: # ignore other [non-numerical] keys, such as path, name, etc
                 pass
-        # TODO: should I exclude NaNs here or will they be talen care of when interpolating, or searching for interp. cube?
-        #
-
-        with open(list_file, 'w') as f:
-            count = [len(v) for v in params.values()][0]
-            for i in range(count):
-                f.write(f"{params['teff'][i]:8.0f} {params['logg'][i]:8.3f} \
-        {params['feh'][i]:8.3f} {params['file'][i]} \n")
-
+        "Dump all in one file (only done once)"
+        with open(save_file, 'wb') as f:
+            pickle.dump(params, f)
     return params
 
 
-def create_cube(input_par, all_par, debug=False):
+# def create_cube(input_par, all_par, debug=False):
     """
     Find a cube in the grid of model atmospheres for interpolation
     by mimnimising the [normalised] distance from input parameters
@@ -113,7 +109,6 @@ def create_cube(input_par, all_par, debug=False):
     for i in range(N):
         tot_dist[:] = tot_dist[:] + np.sqrt(dist[i, :]**2)
 
-
     " Check if any parameters are exactly as the ones at [some] grid point (or within 0.5%) "
     threshold =  0.005 * N
     if np.any(tot_dist < threshold):
@@ -138,59 +133,39 @@ def create_cube(input_par, all_par, debug=False):
             return pos, model_int_path, None
     # if interpolation is needed, build a cube
     else:
-        """
-        Check if any parameter is the same at each grid point
-        This might mean that either
-        1) we might have hit the grid edge
-        2) every point in the grid has the same value of this parameter
-
-        Either way, interpolating over this parameter is obsolette
-        """
-
-        cube_size = 2**len(input_par.keys())
         degenerate_params = []
-        # TODO: N or N-1?
-        for check in range(N): # check every parameter consequently
-            n_dim = 0
-            params_to_interpolate = []
-            # find N=cube_size points with the smallest distance
-            ind = np.argpartition(tot_dist, cube_size)[:cube_size]
-            if len(ind) == 1:
-                print(f"Grid is degenerate ")
-            i = 0
-            for k in input_par:
-                if not k in degenerate_params:
-                    t = [all_par[k][i] for i in ind]
-                    if max(t) == min(t):
-                        if debug:
-                            print(f"{k} is {dist[i, ind[0]] * max(abs(all_par[k])):.2f} far from EVERY point in the grid/cube")
-                        degenerate_params.append(k)
-                    else:
-                        n_dim += 1
-                        params_to_interpolate.append(k)
-                i += 1
-            # cube_size = 2**n_dim
-            " Recompute total distance, this time only considering iteratable parameters "
-            tot_dist = np.zeros(M)
-            i = 0
-            for k, value in input_par.items():
-                if k in params_to_interpolate:
-                    tot_dist[:] = tot_dist[:] + np.sqrt(dist[i, :]**2)
-                i += 1
 
-        "Refine the cube"
-        cube_size = 2**n_dim
+        cube_size = 2**N
         ind = np.argpartition(tot_dist, cube_size)[:cube_size]
-        if debug:
-            print(f"Interpolation 'cube': ")
-            print(f"Interpolating over {len(params_to_interpolate):.0f} parameter(s): {params_to_interpolate}")
-            for i in ind:
-                message = f""
-                for k in input_par:
-                    message = message + f"{k}={all_par[k][i]}\t"
-                message = message + f"{all_par['file'][i]}"
-                print(message)
-        return ind, [all_par['file'][i] for i in ind], params_to_interpolate
+
+        i = 0
+        for k, v in input_par.items():
+            if v >= max(all_par[k]) or v <= min(all_par[k]):
+            # if max(all_par[k][ind ]) == min(all_par[k][ind ]):
+                print(f"{k}  is degenerate")
+                degenerate_params.append(k)
+                cube_size = int(cube_size/2)
+            i += 1
+            # refine
+            ind = np.argpartition(tot_dist, cube_size)[:cube_size]
+            # print(all_par['file'][ind])
+
+        i = 0
+        a = np.full(M, False)
+        tot_dist = np.zeros(M)
+
+        for k in input_par:
+            if not k in degenerate_params:
+                closest_value =  np.partition(abs(dist[i, :]), 2)[:2]
+                ind = np.in1d(abs(dist[i, :]), closest_value)
+                b = np.full(M, False)
+                b[ind] = True
+                a = ~(~a*~b)#?????
+                tot_dist[a] = tot_dist[a] +np.sqrt(dist[i, a]**2)
+
+                # print(abs(dist[i, :]), abs(dist[j, :]), abs(dist[i, :])* abs(dist[j, :]))
+                # ind.extend(np.argpartition(abs(dist[i, :])*abs(dist[j, :]), 2)[:2])
+            i += 1
 
 def interpolate_cube(input, all):
     """
@@ -202,6 +177,21 @@ def interpolate_cube(input, all):
     """
 
 
+def NDinterpolate(inp_par, all_par):
+    """
+    """
+
+    " Exclude degenerate parameters (the same for all grid points) "
+    points = []
+    for k in inp_par:
+        points.append(all_par[k])
+    points = np.array(points).T
+    # values = points
+    values = all_par['structure']
+    print(np.shape(points), np.shape(values))
+    interp_f = LinearNDInterpolator(points, values)
+    # print(interp_f(3.1567890, -2))
+
 
 
 def interpolate_ma_grid(atmos_path, atmos_format, debug):
@@ -209,13 +199,16 @@ def interpolate_ma_grid(atmos_path, atmos_format, debug):
                         format=atmos_format, debug=debug)
 
     input_parameters = {
-        'teff' : 7500,
-        'logg' : 4.1,
-        'feh'  : -2.4
+        'teff' : 8000,
+        'logg' : 3.5,
+        'feh'  : -2.2,
+        'vturb': 3.0
     }
+    NDinterpolate(input_parameters, all_parameters)
 
-    # ind, names, params_to_interpolate = \
-    create_cube(input_parameters, all_parameters, debug=debug)
+    #
+    # # ind, names, params_to_interpolate = \
+    # create_cube(input_parameters, all_parameters, debug=debug)
     # if params_to_interpolate is not None:
     #     print(f"Ready to interpolate?")
     #     " Clean up the input a bit"
