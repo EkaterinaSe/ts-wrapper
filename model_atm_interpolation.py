@@ -98,6 +98,7 @@ def create_cube(input_par, all_par, debug=False):
     N = len(input_par.keys()) # number of input parameters
     M = [len(v) for v in all_par.values()][0] # number of points in the grid
 
+    "Compute individual (parameter specific) distance to each grid point"
     dist = np.zeros( shape=(N,M) )
     i = 0
     for k, value in input_par.items():
@@ -105,50 +106,26 @@ def create_cube(input_par, all_par, debug=False):
         i += 1
 
     """
-    Check if any parameter has the same distance to all grid points
-    This could mean that
-    parameter is [exactly] equally far from any grid point,
-            e.g. the whole grid has the same temperature at each point
-    Interpolating over this parameter is obsolette
-    NOTE: this is more of an exception, than a rule
-
-    Save the parameters over which interpolation needs to be done,
-    and number of points for the 'cube'
+    Compute total distance, collapsing the dimension of parameters.
+    This is our main diagnostic for finding the interpolation 'cube'
     """
-    n_dim = 0
-    params_to_interpolate = []
-    i = 0
-    for k, value in input_par.items():
-        if np.max(dist[i, :]) == np.min(dist[i, :]):
-            if debug:
-                print(f"{k} is {dist[i, :][0] * max(abs(all_par[k])):.2f} far from EVERY point in the grid")
-            else:
-                pass
-        else: # if not, add a dimension, +2 points to the interpolation n-D cube
-            n_dim += 1
-            params_to_interpolate.append(k)
-        i += 1
-
-
-    " Collapse the dimension of parameters, only consider iteratable parameters "
     tot_dist = np.zeros(M)
-    i = 0
-    for k, value in input_par.items():
-        if k in params_to_interpolate:
-            tot_dist[:] = tot_dist[:] + np.sqrt(dist[i, :]**2)
-        i += 1
+    for i in range(N):
+        tot_dist[:] = tot_dist[:] + np.sqrt(dist[i, :]**2)
+
 
     " Check if any parameters are exactly as the ones at [some] grid point (or within 0.5%) "
-    if np.any(tot_dist < 0.005):
-        pos = np.argwhere(tot_dist < 0.005)
+    threshold =  0.005 * N
+    if np.any(tot_dist < threshold):
+        pos = np.argwhere(tot_dist < threshold)
         if len(pos) > 1: # if more than one grid point matches,
         # maybe they differ in parameter we don't iterate over, e.g. alpha/fe
             message = f"Found more than one point in the grid matching input parameters within 0.5%\n"
-            for k in params_to_interpolate:
+            for k in input_par:
                 message = message + f"{k}={input_par[k]}\t"
             message = message + "\n"
             for p in pos:
-                message = message + f"{all_par['file'][p]} \n"
+                message = message + f" {all_par['file'][p]} \n"
             raise Exception(message)
         else: # congrats, we don't need to iterate, this is our model
             pos = pos[0][0]
@@ -161,8 +138,48 @@ def create_cube(input_par, all_par, debug=False):
             return pos, model_int_path, None
     # if interpolation is needed, build a cube
     else:
+        """
+        Check if any parameter is the same at each grid point
+        This might mean that either
+        1) we might have hit the grid edge
+        2) every point in the grid has the same value of this parameter
+
+        Either way, interpolating over this parameter is obsolette
+        """
+
+        cube_size = 2**len(input_par.keys())
+        degenerate_params = []
+        # TODO: N or N-1?
+        for check in range(N): # check every parameter consequently
+            n_dim = 0
+            params_to_interpolate = []
+            # find N=cube_size points with the smallest distance
+            ind = np.argpartition(tot_dist, cube_size)[:cube_size]
+            if len(ind) == 1:
+                print(f"Grid is degenerate ")
+            i = 0
+            for k in input_par:
+                if not k in degenerate_params:
+                    t = [all_par[k][i] for i in ind]
+                    if max(t) == min(t):
+                        if debug:
+                            print(f"{k} is {dist[i, ind[0]] * max(abs(all_par[k])):.2f} far from EVERY point in the grid/cube")
+                        degenerate_params.append(k)
+                    else:
+                        n_dim += 1
+                        params_to_interpolate.append(k)
+                i += 1
+            # cube_size = 2**n_dim
+            " Recompute total distance, this time only considering iteratable parameters "
+            tot_dist = np.zeros(M)
+            i = 0
+            for k, value in input_par.items():
+                if k in params_to_interpolate:
+                    tot_dist[:] = tot_dist[:] + np.sqrt(dist[i, :]**2)
+                i += 1
+
+        "Refine the cube"
         cube_size = 2**n_dim
-        # find N=cube_size points with the smallest distance
         ind = np.argpartition(tot_dist, cube_size)[:cube_size]
         if debug:
             print(f"Interpolation 'cube': ")
@@ -170,17 +187,21 @@ def create_cube(input_par, all_par, debug=False):
             for i in ind:
                 message = f""
                 for k in input_par:
-                    message = message + f"{k}={all_par[k][i]} "
+                    message = message + f"{k}={all_par[k][i]}\t"
+                message = message + f"{all_par['file'][i]}"
                 print(message)
         return ind, [all_par['file'][i] for i in ind], params_to_interpolate
 
-def interpolate_cube():
+def interpolate_cube(input, all):
     """
     Interpolate N model atmospheres with respect to requested parameteres
 
     Input:
-
+    (dict) input -- parameters to interpolate over and their values
+    (dict) all -- all info about the grid, including paramteres of all points
     """
+
+
 
 
 def interpolate_ma_grid(atmos_path, atmos_format, debug):
@@ -189,23 +210,23 @@ def interpolate_ma_grid(atmos_path, atmos_format, debug):
 
     input_parameters = {
         'teff' : 7500,
-        'logg' : 4.0,
+        'logg' : 4.1,
         'feh'  : -2.4
     }
 
-    ind, names, params_to_interpolate = \
+    # ind, names, params_to_interpolate = \
     create_cube(input_parameters, all_parameters, debug=debug)
-    if params_to_interpolate is not None:
-        print(f"Ready to interpolate?")
-        " Clean up the input a bit"
-        inp, all = {}, {}
-        for k in params_to_interpolate:
-            inp.update({ k : input_parameters[k] })
-        for k in all_parameters:
-            all.update({ k : [ all_parameters[k][i] for i in ind ] })
-        interpolate_cube(inp, all)
-        
-    else: # model exists, no interpolation
-        ma = model_atmosphere(atmos_path + names, format=atmos_format)
-        # TODO: write to file here?
-        return ma
+    # if params_to_interpolate is not None:
+    #     print(f"Ready to interpolate?")
+    #     " Clean up the input a bit"
+    #     inp, all = {}, {}
+    #     for k in params_to_interpolate:
+    #         inp.update({ k : input_parameters[k] })
+    #     for k in all_parameters:
+    #         all.update({ k : [ all_parameters[k][i] for i in ind ] })
+    #     interpolate_cube(inp, all)
+    #
+    # else: # model exists, no interpolation
+    #     ma = model_atmosphere(atmos_path + names, format=atmos_format)
+    #     # TODO: write to file here?
+    #     return ma
