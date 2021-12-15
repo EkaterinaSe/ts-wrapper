@@ -46,10 +46,10 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
                         params['feh'].append(ma.feh)
                         params['vturb'].append(ma.vturb[0])
                         params['file'].append(entry.name)
-                        params['structure'].append(np.vstack((ma.depth_scale, ma.temp, ma.ne, ma.vturb)))
+                        params['structure'].append(np.vstack(( 10**(np.array(ma.depth_scale)), ma.temp, ma.ne, ma.vturb)))
                     except: # if it's not a model atmosphere file, or format is wrong
-                        if debug:
-                            print(f"Cound not read model file {entry.name} for model atmosphere")
+                            if debug:
+                                print(f"Cound not read model file {entry.name} for model atmosphere")
 
         for k in params:
             params[k] = np.array(params[k])
@@ -75,7 +75,7 @@ Try setting debug = 1 in config file. Check that expected format of model atmosp
     return params
 
 
-# def create_cube(input_par, all_par, debug=False):
+def create_cube(input_par, all_par, debug=False):
     """
     Find a cube in the grid of model atmospheres for interpolation
     by mimnimising the [normalised] distance from input parameters
@@ -179,31 +179,38 @@ def interpolate_cube(input, all):
 
 def NDinterpolate(inp_par, all_par):
     """
+
     """
+
+    N = len(inp_par.keys()) # number of input parameters
+    M = len( list( inp_par.values())[0] ) # number of models to create
 
     " Exclude degenerate parameters (the same for all grid points) "
     points = []
     for k in inp_par:
-        points.append(all_par[k])
+        if not max(all_par[k]) == min(all_par[k]):
+            points.append(all_par[k])
+        else:
+            print(f"The grid is degenerate in parameter {k}")
     points = np.array(points).T
-    # values = points
+
     values = all_par['structure']
-    print(np.shape(points), np.shape(values))
     interp_f = LinearNDInterpolator(points, values)
-    # print(interp_f(3.1567890, -2))
-
-
+    for i in range(M):
+        int_point = np.array( [inp_par[k][i] for k in inp_par.keys()] ).T
+        # print(int_point, np.shape(int_point), i)
+        print(interp_f(int_point))
 
 def interpolate_ma_grid(atmos_path, atmos_format, debug):
     all_parameters = get_all_ma_parameters(atmos_path,  \
                         format=atmos_format, debug=debug)
 
     input_parameters = {
-        'teff' : 8000,
-        'logg' : 3.5,
-        'feh'  : -2.2,
-        'vturb': 3.0
-    }
+        'teff' : [8000],
+        'logg' : [3.5],
+        'feh'  : [-2.2],
+        'vturb': [3.0]    }
+
     NDinterpolate(input_parameters, all_parameters)
 
     #
