@@ -222,12 +222,6 @@ if __name__ == '__main__':
         conf_file = './config.txt'
     set = read_config.setup(file = conf_file)
 
-    """ This routine doesn't do the fitting! """
-    if set.fitting:
-        print("WARNING!")
-        print("This routine doesn't do fitting, but only computes synthetic spectra using TS.")
-        print("Please run fit_obs.py instead.")
-
     """ Make directory to save output spectra """
     today = datetime.date.today().strftime("%b-%d-%Y")
     set.output_dir = set.cwd + F"/spectra-{set.element}-{today}/"
