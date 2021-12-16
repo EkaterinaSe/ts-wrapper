@@ -93,10 +93,6 @@ def NDinterpolate(inp_par, all_par):
             print(f"The grid is degenerate in parameter {k}")
     points = np.array(points).T
 
-    "Create interpolator function that interpolates model atmospheres structure"
-    values = all_par['structure']
-    interp_f = LinearNDInterpolator(points, values)
-
     # how many models out of the requested list can be created?
     doable = np.full(M, False)
     for i in range(M):
@@ -108,10 +104,13 @@ def NDinterpolate(inp_par, all_par):
 outside of the grid, skipping interpolation")
         else:
             doable[i] = True
-            # int_point = np.array( [inp_par[k][i] \
-                                    # for k in params_to_interpolate] ).T
-    print(f"Will be able to create {len(np.where(doable))} models \
+    print(f"Will be able to create {len(np.where(doable)[0])} models \
 out of requested {M}")
+
+    "Create interpolator function that interpolates model atmospheres structure"
+    values = all_par['structure']
+    interp_f = LinearNDInterpolator(points, values)
+
     return interp_f, params_to_interpolate, doable
 
 
