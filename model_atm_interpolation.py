@@ -179,7 +179,7 @@ def interpolate_cube(input, all):
 
 def NDinterpolate(inp_par, all_par):
     """
-
+    # NOTE: can not extrapolate outside of the grid
     """
 
     N = len(inp_par.keys()) # number of input parameters
@@ -187,46 +187,38 @@ def NDinterpolate(inp_par, all_par):
 
     " Exclude degenerate parameters (the same for all grid points) "
     points = []
+    params_to_interpolate = []
     for k in inp_par:
         if not max(all_par[k]) == min(all_par[k]):
             points.append(all_par[k])
+            params_to_interpolate.append(k)
         else:
             print(f"The grid is degenerate in parameter {k}")
     points = np.array(points).T
 
+    "Create interpolator function that interpolates model atmospheres structure"
     values = all_par['structure']
     interp_f = LinearNDInterpolator(points, values)
     for i in range(M):
-        int_point = np.array( [inp_par[k][i] for k in inp_par.keys()] ).T
-        # print(int_point, np.shape(int_point), i)
-        print(interp_f(int_point))
+        "Skip if outside of the grid"
+        outside = np.array( [np.logical_or(inp_par[k][i] > max(all_par[k]),inp_par[k][i] < min(all_par[k]) ) \
+         for k in params_to_interpolate] )
+        if outside.any():
+            print(f"{[ [k,inp_par[k][i]]  for k in params_to_interpolate]} \
+outside of the grid, skipping interpolation")
+        else:
+            int_point = np.array( [inp_par[k][i] \
+                                    for k in params_to_interpolate] ).T
+            print(interp_f(int_point))
 
 def interpolate_ma_grid(atmos_path, atmos_format, debug):
     all_parameters = get_all_ma_parameters(atmos_path,  \
                         format=atmos_format, debug=debug)
 
     input_parameters = {
-        'teff' : [8000],
-        'logg' : [3.5],
-        'feh'  : [-2.2],
-        'vturb': [3.0]    }
+        'teff' : [8000, 8000],
+        'logg' : [3.5, 3.5],
+        'feh'  : [-10.2, -2.0],
+        'vturb': [3.0, 2.0]    }
 
     NDinterpolate(input_parameters, all_parameters)
-
-    #
-    # # ind, names, params_to_interpolate = \
-    # create_cube(input_parameters, all_parameters, debug=debug)
-    # if params_to_interpolate is not None:
-    #     print(f"Ready to interpolate?")
-    #     " Clean up the input a bit"
-    #     inp, all = {}, {}
-    #     for k in params_to_interpolate:
-    #         inp.update({ k : input_parameters[k] })
-    #     for k in all_parameters:
-    #         all.update({ k : [ all_parameters[k][i] for i in ind ] })
-    #     interpolate_cube(inp, all)
-    #
-    # else: # model exists, no interpolation
-    #     ma = model_atmosphere(atmos_path + names, format=atmos_format)
-    #     # TODO: write to file here?
-    #     return ma
