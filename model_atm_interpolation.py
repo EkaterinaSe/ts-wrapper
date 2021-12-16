@@ -23,7 +23,6 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
     also upload the whole grid, or create the file for the quick upload
     If no list is available, create one by scanning through all available models
     """
-    # list_file = f"{models_path}/all_models_list.txt"
     save_file = f"{models_path}/all_models_save.pkl"
 
     params = {
@@ -80,10 +79,10 @@ def NDinterpolate(inp_par, all_par):
     # NOTE: can not extrapolate outside of the grid
     """
 
-    N = len(inp_par.keys()) # number of input parameters
-    M = len( list( inp_par.values())[0] ) # number of models to create
+    N = int(len(inp_par.keys()) )# number of input parameters
+    M = int(len( list( inp_par.values())[0] )) # number of models to create
 
-    " Exclude degenerate parameters (the same for all grid points) "
+    " Exclude degenerate parameters (aka the same for all grid points) "
     points = []
     params_to_interpolate = []
     for k in inp_par:
@@ -97,6 +96,9 @@ def NDinterpolate(inp_par, all_par):
     "Create interpolator function that interpolates model atmospheres structure"
     values = all_par['structure']
     interp_f = LinearNDInterpolator(points, values)
+
+    # how many models out of the requested list can be created?
+    doable = np.full(M, False)
     for i in range(M):
         "Skip if outside of the grid"
         outside = np.array( [np.logical_or(inp_par[k][i] > max(all_par[k]),inp_par[k][i] < min(all_par[k]) ) \
@@ -105,9 +107,14 @@ def NDinterpolate(inp_par, all_par):
             print(f"{[ [k,inp_par[k][i]]  for k in params_to_interpolate]} \
 outside of the grid, skipping interpolation")
         else:
-            int_point = np.array( [inp_par[k][i] \
-                                    for k in params_to_interpolate] ).T
-            print(interp_f(int_point))
+            doable[i] = True
+            # int_point = np.array( [inp_par[k][i] \
+                                    # for k in params_to_interpolate] ).T
+    print(f"Will be able to create {len(np.where(doable))} models \
+out of requested {M}")
+    return interp_f, params_to_interpolate, doable
+
+
 
 def interpolate_ma_grid(atmos_path, atmos_format, debug):
     all_parameters = get_all_ma_parameters(atmos_path,  \
@@ -119,4 +126,10 @@ def interpolate_ma_grid(atmos_path, atmos_format, debug):
         'feh'  : [-10.2, -2.0],
         'vturb': [3.0, 2.0]    }
 
-    NDinterpolate(input_parameters, all_parameters)
+    interp_f, pars_to_interpolate, models_mask = NDinterpolate(input_parameters, all_parameters)
+
+
+
+
+if __name__ == '__main__':
+    exit(0)
