@@ -84,11 +84,13 @@ def NDinterpolate(inp_par, all_par):
 
     " Exclude degenerate parameters (aka the same for all grid points) "
     points = []
-    params_to_interpolate = []
+    # dict of parameters used for interpolation
+    # and their values for normalising parameter space
+    params_to_interpolate = {}
     for k in inp_par:
         if not max(all_par[k]) == min(all_par[k]):
-            points.append(all_par[k])
-            params_to_interpolate.append(k)
+            points.append(all_par[k] / max(all_par[k]) )
+            params_to_interpolate.update( { k :  max(all_par[k])} )
         else:
             print(f"The grid is degenerate in parameter {k}")
     points = np.array(points).T
