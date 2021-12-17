@@ -93,7 +93,15 @@ def NDinterpolate(inp_par, all_par):
             print(f"The grid is degenerate in parameter {k}")
     points = np.array(points).T
 
-    # how many models out of the requested list can be created?
+    " Check for repeatative points in the grid"
+    test = []
+    for i in range(len( list(all_par.values())[0] )):
+        test.append( [all_par[k][i] for k in params_to_interpolate] )
+    test = np.array(test)
+    if len(np.unique(test, axis=1)) != len(test):
+        raise Warning(f"Grid has repeatative points.")
+
+    " How many models out of the requested list can be created? "
     doable = np.full(M, False)
     for i in range(M):
         "Skip if outside of the grid"
@@ -104,8 +112,8 @@ def NDinterpolate(inp_par, all_par):
 outside of the grid, skipping interpolation")
         else:
             doable[i] = True
-    print(f"Will be able to create {len(np.where(doable)[0])} models \
-out of requested {M}")
+    print(f" {len(np.where(doable)[0])} models out of requested {M} \
+can be created")
 
     "Create interpolator function that interpolates model atmospheres structure"
     values = all_par['structure']
