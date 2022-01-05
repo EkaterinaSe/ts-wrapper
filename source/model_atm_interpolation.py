@@ -45,7 +45,7 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
                         params['feh'].append(ma.feh)
                         params['vturb'].append(ma.vturb[0])
                         params['file'].append(entry.name)
-                        params['structure'].append(np.vstack(( ma.depth_scale, ma.temp, np.log10(ma.ne), ma.vturb)))
+                        params['structure'].append(np.vstack(( ma.depth_scale, ma.temp, ma.ne, ma.vturb)))
                     except: # if it's not a model atmosphere file, or format is wrong
                             if debug:
                                 print(f"Cound not read model file {entry.name} for model atmosphere")
