@@ -31,12 +31,6 @@ if __name__ == '__main__':
     "Read all model atmospheres"
     all_parameters = get_all_ma_parameters(atmos_path, \
                                             format = 'marcs', debug=True)
-
-    all_new = {}
-    for k in all_parameters:
-        all_new.update({ k : all_parameters[k] })
-
-    all_parameters = all_new
     # size of the model grid
     M = len(all_parameters['file'])
     # how many points to remove?
@@ -47,22 +41,25 @@ if __name__ == '__main__':
     excluded = np.full(M, False)
     excluded[ind] = True
 
-    " Copy the grid of models omitting those random points"
+    " Copy the grid of models omitting a random point"
     all_short = {}
     for k in all_parameters:
         all_short.update({ k : all_parameters[k][~excluded] })
 
     " Create array of input parameters for interpolation "
-    interpol_parameters = { 'teff':[], 'logg':[], 'feh':[], 'vturb':[] }
-    for i in np.where(excluded)[0]:
-        for k in interpol_parameters:
-            interpol_parameters[k].append(all_parameters[k][i])
+    interpol_parameters = { 'teff':None, 'logg':None, 'feh':None, 'vturb':None }
+    for k in interpol_parameters:
+        interpol_parameters[k] = all_parameters[k][excluded]
 
     interp_f, pars_to_interpolate, models_mask = NDinterpolate(interpol_parameters, all_short)
 
     comparison = {}
-    strtuct_keys = ['tau500', 'temp', 'ne', 'vturb']
-    for i in range(len(np.where(excluded)[0])):
+    struct_keys = ['tau500', 'temp', 'ne', 'vturb']
+    for i in np.where(excluded)[0]:
+        # mask = np.full(M, False)
+        # mask[i] = True
+
+
         name_exc = all_parameters['file'][i]
         # poitns are normalised to the max value of parameter
         # (stored in pars_to_interpolate)
@@ -74,12 +71,11 @@ if __name__ == '__main__':
         # it returns array of interpolated models, so for one take 0th element
         interpolated_structure = interp_f(point)[0]
 
-        # difference in structure of original and interpolated
-        diff =  (value - interpolated_structure) / value
-
         comparison.update( { name_exc : {} } )
-        for j in range(len(strtuct_keys)):
-            comparison[name_exc].update( { strtuct_keys[j] : diff[j] } )
+        for j in range(len(struct_keys)):
+            comparison[name_exc].update( { struct_keys[j] : {'interpol' : interpolated_structure[j], 'orig' : value[j] } } )
+        for k in ['teff', 'logg', 'feh', 'vturb']:
+            comparison[name_exc].update( { k :  all_parameters[k][i] } )
 
     with open('./interpolation_MC_test.pkl', 'wb') as f:
         pickle.dump(comparison, f)
