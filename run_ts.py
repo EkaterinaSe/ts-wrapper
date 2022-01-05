@@ -238,7 +238,9 @@ if __name__ == '__main__':
     for atm_file in set.atmos_list:
 
         """ First read model atmosphere for parameteres """
-        atmos = model_atmosphere(file = atm_file, format=set.atmos_format)
+        atmos = model_atmosphere()
+        atmos.read(file = atm_file, format=set.atmos_format)
+
         atmos.path = atm_file
 
         spectra_all.update( { atmos.id :  { 'atmos_obj':atmos, 'abund':[], 'spec':[] } } )
