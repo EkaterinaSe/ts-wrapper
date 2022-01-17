@@ -6,6 +6,7 @@ import subprocess
 import datetime
 import numpy as np
 from scipy.interpolate import LinearNDInterpolator
+from scipy.spatial import Delaunay
 import pickle
 import glob
 import time
@@ -45,7 +46,8 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
                         params['feh'].append(ma.feh)
                         params['vturb'].append(ma.vturb[0])
                         params['file'].append(entry.name)
-                        params['structure'].append(np.vstack(( ma.depth_scale, ma.temp, np.log10(ma.ne), ma.vturb)))
+                        params['structure'].append(np.vstack(( ma.depth_scale, np.log10(ma.temp), np.log10(ma.ne), ma.vturb)))
+
                     except: # if it's not a model atmosphere file, or format is wrong
                             if debug:
                                 print(f"Cound not read model file {entry.name} for model atmosphere")
@@ -95,6 +97,9 @@ def NDinterpolate(inp_par, all_par):
             print(f"The grid is degenerate in parameter {k}")
     points = np.array(points).T
 
+    print("Creating a thing...")
+    tri = Delaunay(points)
+
     " Check for repeatative points in the grid"
     test = []
     for i in range(len( list(all_par.values())[0] )):
@@ -121,7 +126,7 @@ can be created")
     values = all_par['structure']
     interp_f = LinearNDInterpolator(points, values)
 
-    return interp_f, params_to_interpolate, doable
+    return interp_f, params_to_interpolate, doable, tri
 
 
 
