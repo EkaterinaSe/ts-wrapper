@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import datetime
 import numpy as np
-from scipy.interpolate import LinearNDInterpolator
+from scipy.interpolate import LinearNDInterpolator, interp1d
 from scipy.spatial import Delaunay
 import pickle
 import glob
@@ -34,23 +34,35 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
             params = pickle.load(f)
     else:
         print(f"Checking all model atmospheres under {models_path}")
+        d_sc_new = np.linspace(-5, 2, 100)
+
         with os.scandir(models_path) as all_files:
             for entry in all_files:
                 if not entry.name.startswith('.') and entry.is_file():
-                    try:
-                        file_path = models_path + entry.name
-                        ma = model_atmosphere()
-                        ma.read(file_path, format=format)
-                        params['teff'].append(ma.teff)
-                        params['logg'].append(ma.logg)
-                        params['feh'].append(ma.feh)
-                        params['vturb'].append(ma.vturb[0])
-                        params['file'].append(entry.name)
-                        params['structure'].append(np.vstack(( ma.depth_scale, np.log10(ma.temp), np.log10(ma.ne), ma.vturb)))
+                # try:
+                    file_path = models_path + entry.name
+                    ma = model_atmosphere()
+                    ma.read(file_path, format=format)
+                    params['teff'].append(ma.teff)
+                    params['logg'].append(ma.logg)
+                    params['feh'].append(ma.feh)
+                    params['vturb'].append(ma.vturb[0])
+                    params['file'].append(entry.name)
 
-                    except: # if it's not a model atmosphere file, or format is wrong
-                            if debug:
-                                print(f"Cound not read model file {entry.name} for model atmosphere")
+                    # bring all values to the same depth_scale (tau500)
+                    for par in ['temp', 'ne']: # logarithmic values
+                        f_int = interp1d(ma.depth_scale, np.log10(ma.__dict__[par]), fill_value='extrapolate')
+                        ma.__dict__[par] = f_int(d_sc_new)
+                    for par in ['vturb']: # linear values
+                        f_int = interp1d(ma.depth_scale, ma.__dict__[par], fill_value='extrapolate')
+                        ma.__dict__[par] = f_int(d_sc_new)
+
+                    params['structure'].append(np.vstack(( d_sc_new, ma.temp, ma.ne, ma.vturb)))
+
+
+                    # except: # if it's not a model atmosphere file, or format is wrong
+                    #         if debug:
+                    #             print(f"Cound not read model file {entry.name} for model atmosphere")
 
         for k in params:
             params[k] = np.array(params[k])
