@@ -222,12 +222,6 @@ if __name__ == '__main__':
         conf_file = './config.txt'
     set = read_config.setup(file = conf_file)
 
-    """ This routine doesn't do the fitting! """
-    if set.fitting:
-        print("WARNING!")
-        print("This routine doesn't do fitting, but only computes synthetic spectra using TS.")
-        print("Please run fit_obs.py instead.")
-
     """ Make directory to save output spectra """
     today = datetime.date.today().strftime("%b-%d-%Y")
     set.output_dir = set.cwd + F"/spectra-{set.element}-{today}/"
@@ -244,7 +238,9 @@ if __name__ == '__main__':
     for atm_file in set.atmos_list:
 
         """ First read model atmosphere for parameteres """
-        atmos = model_atmosphere(file = atm_file, format=set.atmos_format)
+        atmos = model_atmosphere()
+        atmos.read(file = atm_file, format=set.atmos_format)
+
         atmos.path = atm_file
 
         spectra_all.update( { atmos.id :  { 'atmos_obj':atmos, 'abund':[], 'spec':[] } } )

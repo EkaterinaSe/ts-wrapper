@@ -1,3 +1,11 @@
+spectra-*
+input/
+atmos.in
+config*
+cnfg*
 atmos_package.py
 __pycache__/*
 __pycache__
+*.ipynb
+*.pkl
+*.txt

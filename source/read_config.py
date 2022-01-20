@@ -2,7 +2,7 @@ import numpy as np
 import os
 # local
 from observations import *
-
+from model_atm_interpolation import interpolate_ma_grid
 """
 Setup that will be used to run TS
 """
@@ -14,6 +14,10 @@ class setup(object):
         """
         Reads specifications for the TS run from a config file
         """
+        "Some default keys:"
+        self.debug = 0
+        self.interpolate = 0
+
         print('Reading configuration file %s' %(file ) )
         for line in open(file, 'r'):
             line=line.strip()
@@ -30,12 +34,6 @@ class setup(object):
                     else:
                         self.__dict__[key] = int(val)
 
-        debug = False
-        if 'debug' in self.__dict__.keys():
-            if self.debug == 1:
-                debug = True
-        self.debug = debug
-
         if self.use_abund == 1:
             self.abund_list = [self.new_abund]
         elif self.use_abund == 2:
@@ -43,9 +41,25 @@ class setup(object):
             # [start, end) --> [start, end]
             self.abund_list = np.hstack((self.abund_list,  self.end_abund ))
 
-        print("Reading a list of model atmospheres from %s" %( self.use_atmos ))
-        self.atmos_list = np.loadtxt(self.use_atmos, ndmin=1, dtype=str, usecols=(0))
-        self.atmos_list = [ self.atmos_path + F"/{x}" for x in self.atmos_list ]
+        if self.interpolate:
+            print(f"Model atmosphere(s) will be created using input parameters")
+            print(f"Reading parameters from {self.use_atmos}")
+            input = np.loadtxt(self.use_atmos, dtype=float, ndmin=1)
+            self.atmos_input_params = {  }
+            i = 0
+            for k in['teff', 'logg', 'feh', 'vturb']:
+                self.atmos_input_params.update({
+                    k : input[:, i]
+                })
+                i +=1
+            "Prepare model atmospheres"
+            interpolate_ma_grid(self.atmos_path, self.atmos_format, self.debug)
+
+            exit(1)
+        else:
+            print(f"Reading a list of model atmospheres from {self.use_atmos}")
+            self.atmos_list = np.loadtxt(self.use_atmos, ndmin=1, dtype=str, usecols=(0))
+            self.atmos_list = [ self.atmos_path + F"/{x}" for x in self.atmos_list ]
 
         print('Element: %s' %self.element)
         print(F"Use {len(self.abund_list)} abundances")
@@ -129,89 +143,3 @@ class setup(object):
         elif z != self.element_z :
             print(F"config file states Z={self.element_z} for element {self.element}, but according to ./atomic_numbers.dat Z={z}. Stopped.")
             exit(1)
-
-
-        """ Fitting observations? """
-        fitting = False
-        if 'fitting' in self.__dict__.keys():
-            if self.fitting == 1:
-                fitting = True
-        self.fitting = fitting
-
-        """ Saving all spectra computed while fitting? """
-        save_all_spec = False
-        if 'save_all_spec' in self.__dict__.keys():
-            if self.save_all_spec == 1:
-                save_all_spec = True
-        self.save_all_spec = save_all_spec
-
-
-        if self.fitting:
-            if 'observed_path' not in self.__dict__.keys():
-                print(F"Specify path to observations. Stopped")
-                exit(1)
-
-            print(F"Reading observed spectrum from {self.observed_path}..")
-            w_obs, f_obs = read_observations(self.observed_path, self.observed_format)
-            self.observed_spectrum = spectrum(w_obs, f_obs, res=self.observed_resolution)
-
-            """ Read linemasks """
-            lms = glob.glob( self.line_data + '/*-lmask.txt')
-            self.line_masks = {}
-            for lm in lms:
-                element = lm.split('/')[-1].split('-lmask.txt')[0].lower()
-                if self.debug:
-                    print(F"Found linemask for {element.capitalize()}")
-                w_c, w_start, w_end = np.loadtxt(lm, unpack=True, usecols=(0,1,2), comments=';', ndmin=1)
-
-                if type(w_c) == np.float64:
-                    w_c = np.array([w_c])
-                    w_start = np.array([w_start])
-                    w_end = np.array([w_end])
-                w_c, w_start, w_end = zip(*sorted(zip(w_c, w_start, w_end)))
-                w_c, w_start, w_end = np.array(w_c), np.array(w_start), np.array(w_end)
-                self.line_masks.update({ element : { 'w_center':w_c, 'w_start':w_start, 'w_end':w_end } })
-
-            """
-            Segments (windows) are used by default
-            Windows are defined by the linemask +- line_offset value (in AA)
-            """
-            if  'line_offset' not in self.__dict__.keys():
-                print("WARNING: seems that you did not set line_offset in the configuration file")
-                print("It defines how far to compute the spectrum from the center of the lines in the linemask")
-                self.line_offset = 5
-                print(F"set to {self.line_offset} AA")
-
-
-            """ Fitting for macro turbulence? """
-            fit_vmac = False
-            self.vmac = [np.nan]
-            if 'fit_vmac' in self.__dict__.keys():
-                if self.fit_vmac == 1:
-                    fit_vmac = True
-                    self.vmac = np.arange(self.start_vmac, self.end_vmac, self.step_vmac)
-                    # [start, end) --> [start, end]
-                    if not self.end_vmac in self.vmac:
-                        self.vmac = np.hstack((self.vmac, self.end_vmac))
-            self.fit_vmac = fit_vmac
-
-            """ Fitting for rotational broadening? """
-            fit_vrot = False
-            self.vrot = [np.nan]
-            if 'fit_vrot' in self.__dict__.keys():
-                if self.fit_vrot == 1:
-                    fit_vrot = True
-                    self.vrot = np.arange(self.start_vrot, self.end_vrot, self.step_vrot)
-                    # [start, end) --> [start, end]
-                    if not self.end_vrot in self.vrot:
-                        self.vrot = np.hstack((self.vrot, self.end_vrot))
-            self.fit_vrot = fit_vrot
-
-            if self.debug:
-                print(F"Requested Vmac:", self.vmac)
-            if self.debug:
-                print(F"Requested Vrot:", self.vrot)
-
-            if (self.fit_vmac and not self.line_by_line) or (self.fit_vrot and not self.line_by_line):
-                print("fitting for Vmac or Vrot not line by line is not supported yet. Stopped")
-                exit(1)
