@@ -26,7 +26,7 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
     """
     save_file = f"{models_path}/all_models_save.pkl"
     params = {
-    'teff':[], 'logg':[], 'feh':[], 'vturb':[], 'file':[], 'structure':[]
+    'teff':[], 'logg':[], 'feh':[], 'vturb':[], 'file':[], 'structure':[], 'mass':[]
     }
 
     if os.path.isfile(save_file) and os.path.getsize(save_file) > 0:
@@ -42,22 +42,29 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
                 # try:
                     file_path = models_path + entry.name
                     ma = model_atmosphere()
+
                     ma.read(file_path, format=format)
-                    params['teff'].append(ma.teff)
-                    params['logg'].append(ma.logg)
-                    params['feh'].append(ma.feh)
-                    params['vturb'].append(ma.vturb[0])
-                    params['file'].append(entry.name)
 
-                    # bring all values to the same depth_scale (tau500)
-                    for par in ['temp', 'ne']: # logarithmic values
-                        f_int = interp1d(ma.depth_scale, np.log10(ma.__dict__[par]), fill_value='extrapolate')
-                        ma.__dict__[par] = f_int(d_sc_new)
-                    for par in ['vturb']: # linear values
-                        f_int = interp1d(ma.depth_scale, ma.__dict__[par], fill_value='extrapolate')
-                        ma.__dict__[par] = f_int(d_sc_new)
+                    if ma.mass <= 1.0:
 
-                    params['structure'].append(np.vstack(( d_sc_new, ma.temp, ma.ne, ma.vturb)))
+                        params['teff'].append(ma.teff)
+                        params['logg'].append(ma.logg)
+                        params['feh'].append(ma.feh)
+                        params['vturb'].append(ma.vturb[0])
+                        params['mass'].append(ma.mass)
+
+                        params['file'].append(entry.name)
+
+                        ma.temp = np.log10(ma.temp)
+                        ma.ne = np.log10(ma.ne)
+
+                        # bring all values to the same depth_scale (tau500)
+                        for par in ['temp', 'ne', 'vturb']:
+                            f_int = interp1d(ma.depth_scale, ma.__dict__[par], fill_value='extrapolate')
+                            ma.__dict__[par] = f_int(d_sc_new)
+                        ma.depth_scale = d_sc_new
+
+                        params['structure'].append(np.vstack((ma.depth_scale, ma.temp, ma.ne, ma.vturb)))
 
 
                     # except: # if it's not a model atmosphere file, or format is wrong
@@ -71,6 +78,8 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
         if len(params['file']) == 0:
             raise Exception(f"no model atmosphere parameters were retrived from files under {models_path}.\
 Try setting debug = 1 in config file. Check that expected format of model atmosphere is set correctly.")
+        else:
+            print(f"{len(params['file'])} model atmospheres in the grid")
 
         "Print UserWarnings about any NaN in parameters"
         for k in params:
@@ -109,14 +118,15 @@ def NDinterpolate(inp_par, all_par):
             print(f"The grid is degenerate in parameter {k}")
     points = np.array(points).T
 
-    print("Creating a thing...")
-    tri = Delaunay(points)
+    # print("Creating a thing...")
+    # tri = Delaunay(points)
+    tri = None
 
     " Check for repeatative points in the grid"
     test = []
-    for i in range(len( list(all_par.values())[0] )):
-        test.append( [all_par[k][i] for k in params_to_interpolate] )
-    test = np.array(test)
+    for key in all_par:
+        if key not in ['structure', 'file']:
+            test.append( [all_par[k]] )
     if len(np.unique(test, axis=1)) != len(test):
         raise Warning(f"Grid has repeatative points.")
 
@@ -131,8 +141,8 @@ def NDinterpolate(inp_par, all_par):
 outside of the grid, skipping interpolation")
         else:
             doable[i] = True
-    print(f" {len(np.where(doable)[0])} models out of requested {M} \
-can be created")
+    # print(f" {len(np.where(doable)[0])} models out of requested {M} \
+# can be created")
 
     "Create interpolator function that interpolates model atmospheres structure"
     values = all_par['structure']
