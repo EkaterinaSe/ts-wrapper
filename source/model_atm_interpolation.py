@@ -150,6 +150,28 @@ outside of the grid, skipping interpolation")
     return interp_f, params_to_interpolate, doable
 
 
+def NDinterpolate_NLTE_grid(interpol_parameters, nlte_data):
+    N = int(len(interpol_parameters.keys()) ) # number of input parameters
+    M = int(len( list( interpol_parameters.values())[0] )) # number of models to create
+
+
+    points = []
+    # dict of parameters used for interpolation
+    # and their values for normalising parameter space
+    params_to_interpolate = {}
+    for k in interpol_parameters:
+        if not max(nlte_data[k]) == min(nlte_data[k]):
+            points.append(nlte_data[k] / max(nlte_data[k]) )
+            params_to_interpolate.update( { k :  max(nlte_data[k])} )
+        else:
+            print(f"The grid is degenerate in parameter {k}")
+    points = np.array(points).T
+
+    values = nlte_data['depart']
+    interp_f = LinearNDInterpolator(points, values)
+
+    return interp_f, params_to_interpolate
+
 
 def interpolate_ma_grid(atmos_path, atmos_format, debug):
     all_parameters = get_all_ma_parameters(atmos_path,  \
