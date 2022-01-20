@@ -120,7 +120,6 @@ def NDinterpolate(inp_par, all_par):
 
     # print("Creating a thing...")
     # tri = Delaunay(points)
-    tri = None
 
     " Check for repeatative points in the grid"
     test = []
@@ -148,7 +147,7 @@ outside of the grid, skipping interpolation")
     values = all_par['structure']
     interp_f = LinearNDInterpolator(points, values)
 
-    return interp_f, params_to_interpolate, doable, tri
+    return interp_f, params_to_interpolate, doable
 
 
 
