@@ -64,8 +64,10 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
                             ma.__dict__[par] = f_int(d_sc_new)
                         ma.depth_scale = d_sc_new
 
-                        params['structure'].append(np.vstack((ma.depth_scale, ma.temp, ma.ne, ma.vturb)))
+                        ma_structure = np.array( [ma.depth_scale, ma.temp, ma.ne, ma.vturb], \
+                            dtype=[('tau500', 'f4'), ('temp', 'f4'), ('ne', 'f4'), ('vturb', 'f4') ] )
 
+                        params['structure'].append(ma_structure)
 
                     # except: # if it's not a model atmosphere file, or format is wrong
                     #         if debug:
