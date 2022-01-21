@@ -24,10 +24,8 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
     also upload the whole grid, or create the file for the quick upload
     If no list is available, create one by scanning through all available models
     """
+
     save_file = f"{models_path}/all_models_save.pkl"
-    params = {
-    'teff':[], 'logg':[], 'feh':[], 'vturb':[], 'file':[], 'structure':[], 'mass':[]
-    }
 
     if os.path.isfile(save_file) and os.path.getsize(save_file) > 0:
         with open(save_file, 'rb') as f:
@@ -36,10 +34,14 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
         print(f"Checking all model atmospheres under {models_path}")
         d_sc_new = np.linspace(-5, 2, 100)
 
+        params = {
+        'teff':[], 'logg':[], 'feh':[], 'vturb':[], 'file':[], 'structure':[], 'structure_keys':[], 'mass':[]\
+        }
+
         with os.scandir(models_path) as all_files:
             for entry in all_files:
                 if not entry.name.startswith('.') and entry.is_file():
-                # try:
+                    # try:
                     file_path = models_path + entry.name
                     ma = model_atmosphere()
 
@@ -64,10 +66,8 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
                             ma.__dict__[par] = f_int(d_sc_new)
                         ma.depth_scale = d_sc_new
 
-                        ma_structure = np.array( [ma.depth_scale, ma.temp, ma.ne, ma.vturb], \
-                            dtype=[('tau500', 'f4'), ('temp', 'f4'), ('ne', 'f4'), ('vturb', 'f4') ] )
-
-                        params['structure'].append(ma_structure)
+                        params['structure'].append( np.vstack( (ma.depth_scale, ma.temp, ma.ne, ma.vturb )  ) )
+                        params['structure_keys'].append( ['tau500', 'temp', 'ne', 'vturb'])
 
                     # except: # if it's not a model atmosphere file, or format is wrong
                     #         if debug:
@@ -99,57 +99,40 @@ Try setting debug = 1 in config file. Check that expected format of model atmosp
     return params
 
 
-def NDinterpolate(inp_par, all_par):
+def NDinterpolate_MA(all_par, interpol_par):
     """
-    # NOTE: can not extrapolate outside of the grid
+    Can not extrapolate outside of the grid
     """
 
-    N = int(len(inp_par.keys()) )# number of input parameters
-    M = int(len( list( inp_par.values())[0] )) # number of models to create
-
-    " Exclude degenerate parameters (aka the same for all grid points) "
-    points = []
-    # dict of parameters used for interpolation
-    # and their values for normalising parameter space
-    params_to_interpolate = {}
-    for k in inp_par:
-        if not max(all_par[k]) == min(all_par[k]):
-            points.append(all_par[k] / max(all_par[k]) )
-            params_to_interpolate.update( { k :  max(all_par[k])} )
-        else:
+    " Check for degenerate parameters (aka the same for all grid points)"
+    for k in interpol_par:
+        if max(all_par[k]) == min(all_par[k]):
             print(f"The grid is degenerate in parameter {k}")
+            exit()
+
+    " Check for repetitive points within the requested coordinates"
+    test = []
+    for key in interpol_par:
+            test.append( all_par[k] )
+    test = np.array(test)
+    if len(np.unique(test)) != len(test):
+        print(f"Grid with coordinates {interpol_par} has repetitive points.")
+        exit()
+
+    " Normalise the coordinates of the grid "
+    points = []
+    norm_coord = {}
+    for k in interpol_par:
+            points.append(all_par[k] / max(all_par[k]) )
+            norm_coord.update( { k :  max(all_par[k])} )
     points = np.array(points).T
 
-    # print("Creating a thing...")
-    # tri = Delaunay(points)
-
-    " Check for repeatative points in the grid"
-    test = []
-    for key in all_par:
-        if key not in ['structure', 'file']:
-            test.append( [all_par[k]] )
-    if len(np.unique(test, axis=1)) != len(test):
-        raise Warning(f"Grid has repeatative points.")
-
-    " How many models out of the requested list can be created? "
-    doable = np.full(M, False)
-    for i in range(M):
-        "Skip if outside of the grid"
-        outside = np.array( [np.logical_or(inp_par[k][i] > max(all_par[k]),inp_par[k][i] < min(all_par[k]) ) \
-         for k in params_to_interpolate] )
-        if outside.any():
-            print(f"{[ [k,inp_par[k][i]]  for k in params_to_interpolate]} \
-outside of the grid, skipping interpolation")
-        else:
-            doable[i] = True
-    # print(f" {len(np.where(doable)[0])} models out of requested {M} \
-# can be created")
-
-    "Create interpolator function that interpolates model atmospheres structure"
+    "Create the function that interpolates model atmospheres structure"
     values = all_par['structure']
+
     interp_f = LinearNDInterpolator(points, values)
 
-    return interp_f, params_to_interpolate, doable
+    return interp_f, norm_coord
 
 
 def NDinterpolate_NLTE_grid(interpol_parameters, nlte_data):
@@ -173,21 +156,6 @@ def NDinterpolate_NLTE_grid(interpol_parameters, nlte_data):
     interp_f = LinearNDInterpolator(points, values)
 
     return interp_f, params_to_interpolate
-
-
-def interpolate_ma_grid(atmos_path, atmos_format, debug):
-    all_parameters = get_all_ma_parameters(atmos_path,  \
-                        format=atmos_format, debug=debug)
-
-    input_parameters = {
-        'teff' : [8000, 8000],
-        'logg' : [3.5, 3.5],
-        'feh'  : [-10.2, -2.0],
-        'vturb': [3.0, 2.0]    }
-
-    interp_f, pars_to_interpolate, models_mask = NDinterpolate(input_parameters, all_parameters)
-
-
 
 
 if __name__ == '__main__':
