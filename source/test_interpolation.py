@@ -21,71 +21,70 @@ def mkdir(s):
         shutil.rmtree(s)
     os.mkdir(s)
 
-"""
-Test how LinearNDInterpolator is doing at interpolating MARCS grid
-by excluding N random points from the grid and interpolating to those points
-then compare
-"""
+def random_interpol_test(all_parameters, request_coords, ind_excl):
+    """
+    Test the performance of the interpolation
+    Remove a random model from the grid and interpolate to its parameters
+
+    Input:
+    (dict) all_parameters -- MA grid
+                    read by get_all_ma_parameters from model_atm_interpolation
+    (int) ind_excl -- which point to exclude?
+    (str, tuple) request_coords -- over which coordinates to interpolate?
+                                        e.g. Teff, log(g), and [Fe/H]
+                                        not Vturb or mass
+    """
+
+    " Copy the whole grid of models omitting one random point [at ind_excl]"
+    all_shortened = {}
+
+    for k in all_parameters:
+        all_shortened.update({ k : np.delete(all_parameters[k], ind_excl, axis=0) } )
+
+    """
+    Create an interpolator function using Delanay triangulation
+    Coordinates are normalised to the max value
+    which is returned in norm_coords
+    """
+    interp_f, norm_coord = NDinterpolate_MA(all_shortened, request_coords )
+
+    "Apply to the coordinates of the excluded model"
+    point = [ all_parameters[k][ind_excl] / norm_coord[k] for k in request_coords]
+    # it returns array of interpolated models, so for one take 0th element
+    interpolated_structure = interp_f(point)[0]
+
+    orig_model = all_parameters['structure'][ind_excl]
+
+    for i in range(len(all_parameters['structure_keys'][ind_excl])):
+        name = all_parameters['structure_keys'][ind_excl][i]
+        max_diff = np.max(interpolated_structure[i] - orig_model[i])
+        print(f"max abs diff({name}) = { max_diff }")
+    print()
+    
+    return orig_model, interpolated_structure
+
+
+
 
 if __name__ == '__main__':
+    if len(argv) < 2:
+        print(f"Specify a number of counts (how many times to perform the test?)")
+        exit()
+    else:
+        count = int(argv[1])
 
     atmos_path = '/Users/semenova/phd/projects/ts-wrapper/input/atmos/MARCS/all/'
 
-    "Read all model atmospheres"
-    all_parameters = get_all_ma_parameters(atmos_path, \
+    ma_grid= get_all_ma_parameters(atmos_path, \
                                             format = 'marcs', debug=True)
-
-    # size of the model grid
-    M = len(all_parameters['file'])
-    # how many points to remove?
-    count = int(argv[1])
+    interpol_coords = ['teff', 'logg', 'feh', 'vturb']
 
     "Generate random indexes to exclude models from the grid"
-    ind = ( np.random.uniform(low=0.0, high=M-1.0, size=count) ).astype(int)
+    random_ind = ( np.random.uniform(low=0.0, \
+        high=len(ma_grid[interpol_coords[0]])-1.0, size=count) ).astype(int)
 
-    excluded = np.full(M, False)
-    excluded[ind] = True
-
-
-    comparison = {}
-    struct_keys = ['tau500', 'temp', 'ne', 'vturb']
-
-    count_done = 0
-    for i in np.where(excluded)[0]:
-        print(f"{count_done+1} / {count}")
-        mask = np.full(M, False)
-        mask[i] = True
-        " Copy the grid of models omitting a random point"
-        all_short = {}
-        for k in all_parameters:
-            all_short.update({ k : all_parameters[k][~mask] })
-
-        " Create array of input parameters for interpolation "
-        interpol_parameters = { 'teff':None, 'logg':None, 'feh':None, 'vturb':None}
-        for k in interpol_parameters:
-            interpol_parameters[k] = all_parameters[k][mask]
-
-        interp_f, pars_to_interpolate, models_mask = NDinterpolate(interpol_parameters, all_short)
-
-        name_exc = all_parameters['file'][i].replace('.mod', '')
-        # points are normalised to the max value of parameter
-        # (stored in pars_to_interpolate)
-        point = np.array([ all_parameters[k][i] / pars_to_interpolate[k] for k in pars_to_interpolate])
-        # ma.depth_scale, ma.temp, ma.ne, ma.vturb
-        value = all_parameters['structure'][i]
-
-        # it returns array of interpolated models, so for one take 0th element
-        interpolated_structure = interp_f(point)[0]
-
-        comparison.update( { name_exc : {} } )
-        for j in range(len(struct_keys)):
-            comparison[name_exc].update( { struct_keys[j] : {'interpol' : interpolated_structure[j], 'orig' : value[j] } } )
-            # print(f"{struct_keys[j]} diff: {max(np.abs( interpolated_structure[j] - value[j] ))}")
-        for k in ['teff', 'logg', 'feh', 'vturb']:
-            comparison[name_exc].update( { k :  all_parameters[k][i] } )
-        count_done+=1
-    with open('./interpolation_MC_test.pkl', 'wb') as f:
-        pickle.dump(comparison, f)
-
+    for i in random_ind:
+        orig_structure, interpol_structure = \
+                            random_interpol_test(ma_grid, interpol_coords, i)
 
     exit(0)

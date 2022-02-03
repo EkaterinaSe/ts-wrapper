@@ -75,3 +75,20 @@ def read_binary_grid(grid_file, pointer=1):
         depart = np.fromfile(f, dtype='f8', count=ndep*nk).reshape(nk, ndep)
 
     return ndep, nk, depart, tau
+
+
+def read_full_grid(bin_file, aux_file):
+    aux = np.genfromtxt(aux_file, dtype=None, \
+    names = ('atmos_id', 'teff', 'logg', 'feh', 'alpha', 'mass', 'vturb', 'ab', 'pointer'))
+
+    data = {}
+    for k in aux.dtype.names:
+        data.update( { k : aux[k] } )
+
+    # read and save each record from the binary file
+    data.update( { 'depart' : [] } )
+    for p in data['pointer']:
+        ndep, nk, depart, tau = read_binary_grid(bin_file, pointer=p)
+        data['depart'].append( np.vstack( (tau, depart) ) )
+    data['depart'] = np.array( data['depart'] )
+    return data
