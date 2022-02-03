@@ -84,10 +84,11 @@ def read_full_grid(bin_file, aux_file):
     data = {}
     for k in aux.dtype.names:
         data.update( { k : aux[k] } )
+
     # read and save each record from the binary file
     data.update( { 'depart' : [] } )
     for p in data['pointer']:
         ndep, nk, depart, tau = read_binary_grid(bin_file, pointer=p)
         data['depart'].append( np.vstack( (tau, depart) ) )
-
+    data['depart'] = np.array( data['depart'] )
     return data
