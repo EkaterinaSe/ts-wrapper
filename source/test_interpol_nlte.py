@@ -22,6 +22,16 @@ if __name__ == '__main__':
     # read every record and it's parameters
     nlte_data = read_full_grid( bin_file, aux_file )
 
+
+    # get the grid of model atmospheres
+    # and bring NLTE departure grid to the same depth scale
+    atmos_path = '/Users/semenova/phd/projects/ts-wrapper/input/atmos/MARCS/all/'
+    "Read all model atmospheres"
+    all_parameters = get_all_ma_parameters(atmos_path, \
+                                            format = 'marcs', debug=True)
+
+
+
     interpol_parameters = { 'teff':None, 'logg':None, 'feh':None, 'vturb':None}
     for k in interpol_parameters:
         interpol_parameters[k] = nlte_data[k]
