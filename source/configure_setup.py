@@ -112,3 +112,4 @@ class setup(object):
                         self.input_params['elements'][el].update({
                                 k : self.nlte_config[el][k]
                                                             })
+            ma_f = prepInterpolation(self)
