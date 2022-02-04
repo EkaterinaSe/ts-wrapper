@@ -2,6 +2,7 @@ import numpy as np
 import os
 from sys import argv, exit
 from model_atm_interpolation import get_all_ma_parameters, NDinterpolate_MA
+from read_nlte import read_full_grid
 # local
 
 """
@@ -55,7 +56,7 @@ class setup(object):
         "Read all the keys from the config file"
         for line in open(file, 'r').readlines():
             line = line.strip()
-            if not line.startswith('#') ̰ƒ and len(line)>0:
+            if not line.startswith('#') and len(line)>0:
                 if not '+=' in line:
                     k, val = line.split('=')
                     k, val = k.strip(), val.strip()
@@ -75,6 +76,8 @@ class setup(object):
                 elif '+=' in line:
                     k, val = line.split('+=')
                     k, val = k.strip(), val.strip()
+                    if len(self.__dict__[k]) == 0:
+                        self.__dict__[k] = []
                     self.__dict__[k].append(val)
 
         # transfer list of lines in nlte_config to a dictionary
@@ -108,34 +111,34 @@ class setup(object):
         Store for future use
         """
         self.interpolator = {
-            'modelAtm',
+            'modelAtm' : None,
             'NLTE' : {}
         }
 
-        "" Over which parameters (aka coordinates) to interpolate?""
+        " Over which parameters (aka coordinates) to interpolate?"
         interpolCoords = ['teff', 'logg', 'feh']
-        if 'vturb' in setup.inputParams:
+        if 'vturb' in self.inputParams:
             interpolCoords.append('vturb')
 
         if self.debug:
             print("preparing model atmosphere interpolator...")
-        modelAtmGrid= get_all_ma_parameters(setup.atmos_path, \
-                                        format = setup.atmos_format, debug=setup.debug)
+        modelAtmGrid= get_all_ma_parameters(self.atmos_path, \
+                                        format = self.atmos_format, debug=self.debug)
 
 
         interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
 
-        self.interpolator['modelAtm'].update( {'interpFunction' : interpFunction, \
-                                                'normCoord' : normalisedCoord} )
+        self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
+                                                'normCoord' : normalisedCoord}
 
-        for el in self.inputParams:
+        for el in self.inputParams['elements']:
             if self.debug:
-                print(f"preparing interpolators for {el}")
+                print(f"preparing interpolator for {el}")
 
-            nlteData = read_full_grid( self.elements[el]['nlteGrid'], \
-                                        self.elements[el]['nlteAux'] )
+            nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
+                                        self.inputParams['elements'][el]['nlteAux'] )
             interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords)
             self.interpolator['NLTE'].update( { el: {
-                                                {'interpFunction' : interpFunction, \
+                                                'interpFunction' : interpFunction, \
                                                  'normCoord' : normalisedCoord}
                                                  } )
