@@ -1,6 +1,7 @@
 import numpy as np
 import os
 from sys import argv, exit
+from model_atm_interpolation import get_all_ma_parameters, NDinterpolate_MA
 # local
 
 """
@@ -45,6 +46,22 @@ def read_random_input_parameters(file):
     return input_par
 
 
+def prepInterpolation(setup):
+    """
+    Read grid of model atmospheres and NLTE grids of departures
+    and prepare interpolating functions
+    Store for future use
+    """
+    print("preparing model atmosphere interpolator...")
+    modelAtmGrid= get_all_ma_parameters(setup.atmos_path, \
+                                    format = setup.atmos_format, debug=setup.debug)
+
+    interpolCoords = ['teff', 'logg', 'feh']
+    if 'vturb' in setup.input_params:
+        interpolCoords.append('vturb')
+    interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
+    return interpFunction
+
 class setup(object):
     def __init__(self, file='./config.txt'):
         self.cwd = os.getcwd()
@@ -82,7 +99,7 @@ class setup(object):
             el, files = l.split(':')[0].strip(), l.split(':')[-1].strip().split(',')
             d.update({el.capitalize() : {'nlteGrid' : files[0], 'nlteAux' : files[1], 'modelAtom' : files[2] }})
         self.nlte_config = d
-            
+
 
         if not 'nlte_config' in self.__dict__ or len(self.nlte_config) == 0:
             print(f"{50*'*'}\n Warning: all elements will be computed in LTE!\n To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
