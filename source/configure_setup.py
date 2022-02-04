@@ -46,21 +46,6 @@ def read_random_input_parameters(file):
     return input_par
 
 
-def prepInterpolation(setup):
-    """
-    Read grid of model atmospheres and NLTE grids of departures
-    and prepare interpolating functions
-    Store for future use
-    """
-    print("preparing model atmosphere interpolator...")
-    modelAtmGrid= get_all_ma_parameters(setup.atmos_path, \
-                                    format = setup.atmos_format, debug=setup.debug)
-
-    interpolCoords = ['teff', 'logg', 'feh']
-    if 'vturb' in setup.input_params:
-        interpolCoords.append('vturb')
-    interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
-    return interpFunction
 
 class setup(object):
     def __init__(self, file='./config.txt'):
@@ -70,7 +55,7 @@ class setup(object):
         "Read all the keys from the config file"
         for line in open(file, 'r').readlines():
             line = line.strip()
-            if not line.startswith('#') and len(line)>0:
+            if not line.startswith('#') ̰ƒ and len(line)>0:
                 if not '+=' in line:
                     k, val = line.split('=')
                     k, val = k.strip(), val.strip()
@@ -103,13 +88,54 @@ class setup(object):
 
         if not 'nlte_config' in self.__dict__ or len(self.nlte_config) == 0:
             print(f"{50*'*'}\n Warning: all elements will be computed in LTE!\n To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
-        if 'input_params_file' in self.__dict__:
-            self.input_params = read_random_input_parameters(self.input_params_file)
-            for el in self.input_params['elements']:
+        if 'inputParams_file' in self.__dict__:
+            self.inputParams = read_random_input_parameters(self.inputParams_file)
+            for el in self.inputParams['elements']:
                 if el in self.nlte_config:
-                    self.input_params['elements'][el]['nlte'] = True
+                    self.inputParams['elements'][el]['nlte'] = True
                     for k in self.nlte_config[el]:
-                        self.input_params['elements'][el].update({
+                        self.inputParams['elements'][el].update({
                                 k : self.nlte_config[el][k]
                                                             })
-            ma_f = prepInterpolation(self)
+            self.prepInterpolation()
+
+
+
+    def prepInterpolation(self):
+        """
+        Read grid of model atmospheres and NLTE grids of departures
+        and prepare interpolating functions
+        Store for future use
+        """
+        self.interpolator = {
+            'modelAtm',
+            'NLTE' : {}
+        }
+
+        "" Over which parameters (aka coordinates) to interpolate?""
+        interpolCoords = ['teff', 'logg', 'feh']
+        if 'vturb' in setup.inputParams:
+            interpolCoords.append('vturb')
+
+        if self.debug:
+            print("preparing model atmosphere interpolator...")
+        modelAtmGrid= get_all_ma_parameters(setup.atmos_path, \
+                                        format = setup.atmos_format, debug=setup.debug)
+
+
+        interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
+
+        self.interpolator['modelAtm'].update( {'interpFunction' : interpFunction, \
+                                                'normCoord' : normalisedCoord} )
+
+        for el in self.inputParams:
+            if self.debug:
+                print(f"preparing interpolators for {el}")
+
+            nlteData = read_full_grid( self.elements[el]['nlteGrid'], \
+                                        self.elements[el]['nlteAux'] )
+            interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords)
+            self.interpolator['NLTE'].update( { el: {
+                                                {'interpFunction' : interpFunction, \
+                                                 'normCoord' : normalisedCoord}
+                                                 } )
