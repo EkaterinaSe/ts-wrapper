@@ -23,7 +23,7 @@ def read_random_input_parameters(file):
     """
     data =[ l.split('#')[0] for l in open(file, 'r').readlines() \
                             if not (l.startswith('#') or l.strip()=='') ]
-    elements = data[0].split()[3:]
+    elements = data[0].replace("'","").split()[3:]
 
     values =  [ l.split() for l in data[1:] ]
     values = np.array(values).astype(float)
@@ -31,7 +31,7 @@ def read_random_input_parameters(file):
     # print(values)
     input_par = {'teff':values[:, 0], 'logg':values[:, 1], 'vturb':values[:, 2], \
                 'elements' : {
-                            elements[i].capitalize() : {'abund': values[:, i], 'nlte':False} \
+                            elements[i].capitalize() : {'abund': values[:, i+3], 'nlte':False} \
                                                 for i in range(len(elements))
                                 }
                 }
@@ -43,6 +43,7 @@ def read_random_input_parameters(file):
 
 
     return input_par
+
 
 class setup(object):
     def __init__(self, file='./config.txt'):
@@ -60,7 +61,7 @@ class setup(object):
                         self.__dict__[k] = val[1:-1]
                     elif val.startswith("["):
                         if '[' in val[1:]:
-                            if not k in self.__dict__:
+                            if not k in self.__dict__ or len(self.__dict__[k]) == 0:
                                 self.__dict__[k] = []
                             self.__dict__[k].append(val)
                         else:
@@ -77,9 +78,9 @@ class setup(object):
         # transfer list of lines in nlte_config to a dictionary
         d = {}
         for l in self.nlte_config:
-            l = l.replace('[','').replace(']','')
-            el, files = l.split(':')[0], l.split(':')[-1].split(',')
-            d.update({el : {'nlteGrid' : files[0], 'nlteAux' : files[1], 'modelAtom' : files[2] }})
+            l = l.replace('[','').replace(']','').replace("'","")
+            el, files = l.split(':')[0].strip(), l.split(':')[-1].strip().split(',')
+            d.update({el.capitalize() : {'nlteGrid' : files[0], 'nlteAux' : files[1], 'modelAtom' : files[2] }})
         self.nlte_config = d
             
 
@@ -88,11 +89,9 @@ class setup(object):
         if 'input_params_file' in self.__dict__:
             self.input_params = read_random_input_parameters(self.input_params_file)
             for el in self.input_params['elements']:
-
                 if el in self.nlte_config:
                     self.input_params['elements'][el]['nlte'] = True
-                    self.input_params['elements'][el].update({
-                            'nlteGrid' : self.nlte_config['nlteGrid'],
-                            'nlteAux' : self.nlte_config['nlteAux'],
-                            'modelAtom' : self.nlte_config['modelAtom']
+                    for k in self.nlte_config[el]:
+                        self.input_params['elements'][el].update({
+                                k : self.nlte_config[el][k]
                                                             })
