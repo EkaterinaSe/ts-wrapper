@@ -10,7 +10,7 @@ import glob
 import time
 # local
 import convolve
-import read_config
+from configure_setup import setup
 from atmos_package import read_atmos_marcs, model_atmosphere
 from read_nlte import grid_to_ts
 
@@ -220,7 +220,8 @@ if __name__ == '__main__':
         conf_file = argv[1]
     else:
         conf_file = './config.txt'
-    set = read_config.setup(file = conf_file)
+    set = setup(file = conf_file)
+    exit(0)
 
     """ Make directory to save output spectra """
     today = datetime.date.today().strftime("%b-%d-%Y")
