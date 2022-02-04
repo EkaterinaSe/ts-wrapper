@@ -92,3 +92,6 @@ def read_full_grid(bin_file, aux_file):
         data['depart'].append( np.vstack( (tau, depart) ) )
     data['depart'] = np.array( data['depart'] )
     return data
+
+    # TODO: make sure that all departure coefficient are at the same tau scale
+    # also, same as model atmospheres... i guess?
