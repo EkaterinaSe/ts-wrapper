@@ -45,28 +45,46 @@ def read_random_input_parameters(file):
     return input_par
 
 class setup(object):
-    def __init__(self, cnfg_file='./config.txt'):
+    def __init__(self, file='./config.txt'):
         self.cwd = os.getcwd()
         self.debug = 0
 
         "Read all the keys from the config file"
-        for line in open(cnfg_file, 'r').readlines():
+        for line in open(file, 'r').readlines():
             line = line.strip()
             if not line.startswith('#') and len(line)>0:
-                k, value = line.split('=')
-                k, value = k.strip(), value.strip()
-                if val.startswith("'") or val.startswith('"'):
-                    self.__dict__[k] = val[1:-1]
-                elif k == 'nlte_config':
-                    val = val.replace('[', '{').replace(']','}')
-                    self.__dict__[k] = eval('dict(' + val + ')')
-                elif val.startswith("["):
-                    self.__dict__[k] = eval('np.array(' + val + ')')
-                elif '.' in val:
-                    self.__dict__[k] = float(val)
-                else:
-                    self.__dict__[k] = int(val)
+                if not '+=' in line:
+                    k, val = line.split('=')
+                    k, val = k.strip(), val.strip()
+                    if val.startswith("'") or val.startswith('"'):
+                        self.__dict__[k] = val[1:-1]
+                    elif val.startswith("["):
+                        if '[' in val[1:]:
+                            if not k in self.__dict__:
+                                self.__dict__[k] = []
+                            self.__dict__[k].append(val)
+                        else:
+                            self.__dict__[k] = eval('np.array(' + val + ')')
+                    elif '.' in val:
+                        self.__dict__[k] = float(val)
+                    else:
+                        self.__dict__[k] = int(val)
+                elif '+=' in line:
+                    k, val = line.split('+=')
+                    k, val = k.strip(), val.strip()
+                    self.__dict__[k].append(val)
 
+        # transfer list of lines in nlte_config to a dictionary
+        d = {}
+        for l in self.nlte_config:
+            l = l.replace('[','').replace(']','')
+            el, files = l.split(':')[0], l.split(':')[-1].split(',')
+            d.update({el : {'nlteGrid' : files[0], 'nlteAux' : files[1], 'modelAtom' : files[2] }})
+        self.nlte_config = d
+            
+
+        if not 'nlte_config' in self.__dict__ or len(self.nlte_config) == 0:
+            print(f"{50*'*'}\n Warning: all elements will be computed in LTE!\n To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         if 'input_params_file' in self.__dict__:
             self.input_params = read_random_input_parameters(self.input_params_file)
             for el in self.input_params['elements']:
