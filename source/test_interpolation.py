@@ -60,7 +60,7 @@ def random_interpol_test(all_parameters, request_coords, ind_excl):
         max_diff = np.max(interpolated_structure[i] - orig_model[i])
         print(f"max abs diff({name}) = { max_diff }")
     print()
-    
+
     return orig_model, interpolated_structure
 
 
