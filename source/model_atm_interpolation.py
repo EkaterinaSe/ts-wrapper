@@ -123,7 +123,7 @@ has repetitive points")
     for k in interpol_coords:
         for k1 in interpol_coords:
             if k != k1:
-                diff = 100 * ( np.abs( data[k] - data[k1]) ) / data[k]
+                diff = 100 * ( np.abs( data[k] - data[k1]) ) / np.mean(np.abs( data[k] - data[k1]))
                 if np.max(diff) < 5:
                     print(f"Grid {dataLabel} is only {np.max(diff)} % different \
 in parameters {k} and {k1}")

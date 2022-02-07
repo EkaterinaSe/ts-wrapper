@@ -25,24 +25,18 @@ def read_random_input_parameters(file):
     """
     data =[ l.split('#')[0] for l in open(file, 'r').readlines() \
                             if not (l.startswith('#') or l.strip()=='') ]
-    elements = data[0].replace("'","").split()[3:]
+    elements = data[0].replace("'","").split()[4:]
 
     values =  [ l.split() for l in data[1:] ]
     values = np.array(values).astype(float)
 
     # print(values)
-    input_par = {'teff':values[:, 0], 'logg':values[:, 1], 'vturb':values[:, 2], \
+    input_par = {'teff':values[:, 0], 'logg':values[:, 1], 'vturb':values[:, 2], 'feh':values[:,3], \
                 'elements' : {
-                            elements[i].capitalize() : {'abund': values[:, i+3], 'nlte':False} \
+                            elements[i].capitalize() : {'abund': values[:, i+4], 'nlte':False} \
                                                 for i in range(len(elements))
                                 }
                 }
-    if 'Fe' not in  input_par['elements']:
-        raise Warning('Has to include Fe in the list of input parameters,\
- (defines [Fe/H])')
-    else:
-        input_par.update( { 'feh' : input_par['elements']['Fe']['abund'] } )
-
 
     return input_par
 
@@ -142,9 +136,16 @@ class setup(object):
                                             self.inputParams['elements'][el]['nlteAux'] )
                 # interpolate over abundance?
                 interpolCoords_el = interpolCoords.copy()
-                if min(nlteData['abund']) != max(nlteData['abund']): # also test for [X/Fe] to catch Fe iteration
+                if min(nlteData['abund']) == max(nlteData['abund']): 
+                    pass
+                elif len(np.unique(nlteData['feh'])) == len(np.unique(nlteData['abund'])):
+                    pass
+                else:
+                    if debug:
+                        print(f"included interpolation over abundance of {el}")
                     interpolCoords_el.append('abund')
 
+                print(interpolCoords_el)
                 interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords_el)
                 self.interpolator['NLTE'].update( { el: {
                                                     'interpFunction' : interpFunction, \
