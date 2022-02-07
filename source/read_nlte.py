@@ -78,8 +78,10 @@ def read_binary_grid(grid_file, pointer=1):
 
 
 def read_full_grid(bin_file, aux_file):
-    aux = np.genfromtxt(aux_file, dtype=None, \
-    names = ('atmos_id', 'teff', 'logg', 'feh', 'alpha', 'mass', 'vturb', 'abund', 'pointer'))
+    aux = np.genfromtxt(aux_file, \
+    dtype = [('atmos_id', 'str'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
+             ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
+             ('pointer', 'i8')])
 
     data = {}
     for k in aux.dtype.names:
