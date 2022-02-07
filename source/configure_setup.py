@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from sys import argv, exit
-from model_atm_interpolation import get_all_ma_parameters, NDinterpolate_MA
+from model_atm_interpolation import get_all_ma_parameters, NDinterpolate_MA, NDinterpolate_NLTE_grid
 from read_nlte import read_full_grid
 # local
 
@@ -119,26 +119,27 @@ class setup(object):
         interpolCoords = ['teff', 'logg', 'feh']
         if 'vturb' in self.inputParams:
             interpolCoords.append('vturb')
-
-        if self.debug:
-            print("preparing model atmosphere interpolator...")
-        modelAtmGrid= get_all_ma_parameters(self.atmos_path, \
-                                        format = self.atmos_format, debug=self.debug)
-
-
-        interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
-
-        self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
-                                                'normCoord' : normalisedCoord}
+#
+#        if self.debug:
+#            print("preparing model atmosphere interpolator...")
+#        modelAtmGrid= get_all_ma_parameters(self.atmos_path, \
+#                                        format = self.atmos_format, debug=self.debug)
+#
+#
+#        interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
+#
+#        self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
+#                                                'normCoord' : normalisedCoord}
 
         for el in self.inputParams['elements']:
-            if self.debug:
-                print(f"preparing interpolator for {el}")
+            if self.inputParams['elements'][el]['nlte']:
+                if self.debug:
+                    print(f"preparing interpolator for {el}")
 
-            nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
-                                        self.inputParams['elements'][el]['nlteAux'] )
-            interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords)
-            self.interpolator['NLTE'].update( { el: {
-                                                'interpFunction' : interpFunction, \
-                                                 'normCoord' : normalisedCoord}
+                nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
+                                            self.inputParams['elements'][el]['nlteAux'] )
+                interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords)
+                self.interpolator['NLTE'].update( { el: {
+                                                    'interpFunction' : interpFunction, \
+                                                     'normCoord' : normalisedCoord}
                                                  } )

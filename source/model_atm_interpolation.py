@@ -135,7 +135,7 @@ def NDinterpolate_MA(all_par, interpol_par):
     return interp_f, norm_coord
 
 
-def NDinterpolate_NLTE_grid(interpol_coords, nlte_data):
+def NDinterpolate_NLTE_grid(nlte_data, interpol_coords):
     N = int(len(interpol_coords) ) # number of input parameters
 
     points = []
@@ -143,6 +143,7 @@ def NDinterpolate_NLTE_grid(interpol_coords, nlte_data):
     # and their values for normalising parameter space
     params_to_interpolate = {}
     for k in interpol_coords:
+        print(k)
         if not max(nlte_data[k]) == min(nlte_data[k]):
             points.append(nlte_data[k] / max(nlte_data[k]) )
             params_to_interpolate.update( { k :  max(nlte_data[k])} )
