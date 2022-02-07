@@ -112,9 +112,9 @@ def preInterpolationTests(data, interpol_coords, dataLabel = 'default'):
             exit()
 
     " Check for repetitive points within the requested coordinates "
-    test = np.array( [ data[k] for k in interpol_coords] )
-    if len(np.unique(test)) != len(test):
-        print(f"Grid {dataLabel} with coordinates {interpol_par} \
+    test = [ data[k] for k in interpol_coords]
+    if len(np.unique(test, axis=1)) != len(test):
+        print(f"Grid {dataLabel} with coordinates {interpol_coords} \
 has repetitive points")
         exit()
 
@@ -122,18 +122,19 @@ has repetitive points")
     "Any coordinates correspond to the same value? e.g. [Fe/H] and A(Fe) "
     for k in interpol_coords:
         for k1 in interpol_coords:
-            diff = 100 * (data[k] - data[k1]) / data[k]
-            if np.max(diff) < 5:
-                print(f"Grid {dataLabel} is only {np.max(diff)} % different \
+            if k != k1:
+                diff = 100 * ( np.abs( data[k] - data[k1]) ) / data[k]
+                if np.max(diff) < 5:
+                    print(f"Grid {dataLabel} is only {np.max(diff)} % different \
 in parameters {k} and {k1}")
-                exit()
+                    exit()
 
     return
 
 
 def NDinterpolate_MA(all_par, interpol_par):
 
-    preInterpolationTests(all_par, interpol_par)
+    preInterpolationTests(all_par, interpol_par, dataLabel='model_atm')
 
     " Normalise the coordinates of the grid "
     points = []
@@ -153,7 +154,7 @@ def NDinterpolate_MA(all_par, interpol_par):
 
 def NDinterpolate_NLTE_grid(nlte_data, interpol_coords):
 
-    preInterpolationTests(nlte_data, interpol_coords)
+    preInterpolationTests(nlte_data, interpol_coords, dataLabel='NLTE')
 
     " Normalise the coordinates of the grid "
     points = []
