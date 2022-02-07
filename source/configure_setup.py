@@ -119,7 +119,7 @@ class setup(object):
         interpolCoords = ['teff', 'logg', 'feh']
         if 'vturb' in self.inputParams:
             interpolCoords.append('vturb')
-       
+
         "Model atmosphere grid"
 #        if self.debug:
 #            print("preparing model atmosphere interpolator...")

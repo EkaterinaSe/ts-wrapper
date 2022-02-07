@@ -98,26 +98,42 @@ Try setting debug = 1 in config file. Check that expected format of model atmosp
             pickle.dump(params, f)
     return params
 
-
-def NDinterpolate_MA(all_par, interpol_par):
+def preInterpolationTests(data, interpol_coords, dataLabel = 'default'):
     """
-    Can not extrapolate outside of the grid
+    Run multiple tests to catch possible exceptions
+    that could affect the performance of the underlying
+    Qnull math engine during Delaunay triangulation
     """
 
-    " Check for degenerate parameters (aka the same for all grid points)"
-    for k in interpol_par:
-        if max(all_par[k]) == min(all_par[k]):
-            print(f"The grid is degenerate in parameter {k}")
+    " Check for degenerate parameters (aka the same for all grid points) "
+    for k in interpol_coords:
+        if max(data[k]) == min(data[k]):
+            print(f"Grid {dataLabel} is degenerate in parameter {k}")
             exit()
 
-    " Check for repetitive points within the requested coordinates"
-    test = []
-    for key in interpol_par:
-            test.append( all_par[k] )
-    test = np.array(test)
+    " Check for repetitive points within the requested coordinates "
+    test = np.array( [ data[k] for k in interpol_coords] )
     if len(np.unique(test)) != len(test):
-        print(f"Grid with coordinates {interpol_par} has repetitive points.")
+        print(f"Grid {dataLabel} with coordinates {interpol_par} \
+has repetitive points")
         exit()
+
+
+    "Any coordinates correspond to the same value? e.g. [Fe/H] and A(Fe) "
+    for k in interpol_coords:
+        for k1 in interpol_coords:
+            diff = 100 * (data[k] - data[k1]) / data[k]
+            if np.max(diff) < 5:
+                print(f"Grid {dataLabel} is only {np.max(diff)} % different \
+in parameters {k} and {k1}")
+                exit()
+
+    return
+
+
+def NDinterpolate_MA(all_par, interpol_par):
+
+    preInterpolationTests(all_par, interpol_par)
 
     " Normalise the coordinates of the grid "
     points = []
@@ -136,25 +152,21 @@ def NDinterpolate_MA(all_par, interpol_par):
 
 
 def NDinterpolate_NLTE_grid(nlte_data, interpol_coords):
-    N = int(len(interpol_coords) ) # number of input parameters
 
+    preInterpolationTests(nlte_data, interpol_coords)
+
+    " Normalise the coordinates of the grid "
     points = []
-    # dict of parameters used for interpolation
-    # and their values for normalising parameter space
-    params_to_interpolate = {}
+    norm_coord = {}
     for k in interpol_coords:
-        print(k)
-        if not max(nlte_data[k]) == min(nlte_data[k]):
-            points.append(nlte_data[k] / max(nlte_data[k]) )
-            params_to_interpolate.update( { k :  max(nlte_data[k])} )
-        else:
-            print(f"The grid is degenerate in parameter {k}")
+        points.append(nlte_data[k] / max(nlte_data[k]) )
+        norm_coord.update( { k :  max(nlte_data[k])} )
     points = np.array(points).T
 
     values = nlte_data['depart']
     interp_f = LinearNDInterpolator(points, values)
 
-    return interp_f, params_to_interpolate
+    return interp_f, norm_coord
 
 
 if __name__ == '__main__':
