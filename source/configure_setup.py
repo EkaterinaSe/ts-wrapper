@@ -119,7 +119,8 @@ class setup(object):
         interpolCoords = ['teff', 'logg', 'feh']
         if 'vturb' in self.inputParams:
             interpolCoords.append('vturb')
-#
+       
+        "Model atmosphere grid"
 #        if self.debug:
 #            print("preparing model atmosphere interpolator...")
 #        modelAtmGrid= get_all_ma_parameters(self.atmos_path, \
@@ -131,6 +132,8 @@ class setup(object):
 #        self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
 #                                                'normCoord' : normalisedCoord}
 
+        "NLTE grids"
+        interpolCoords.append = interpolCoords.append('abund')
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
                 if self.debug:
