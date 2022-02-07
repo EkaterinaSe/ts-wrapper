@@ -133,7 +133,6 @@ class setup(object):
 #                                                'normCoord' : normalisedCoord}
 
         "NLTE grids"
-        interpolCoords.append('abund')
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
                 if self.debug:
@@ -141,7 +140,12 @@ class setup(object):
 
                 nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                             self.inputParams['elements'][el]['nlteAux'] )
-                interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords)
+                # interpolate over abundance?
+                interpolCoords_el = interpolCoords.copy()
+                if min(nlteData['abund']) != max(nlteData['abund']): # also test for [X/Fe] to catch Fe iteration
+                    interpolCoords_el.append('abund')
+
+                interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords_el)
                 self.interpolator['NLTE'].update( { el: {
                                                     'interpFunction' : interpFunction, \
                                                      'normCoord' : normalisedCoord}
