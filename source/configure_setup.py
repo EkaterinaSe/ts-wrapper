@@ -133,7 +133,7 @@ class setup(object):
 #                                                'normCoord' : normalisedCoord}
 
         "NLTE grids"
-        interpolCoords.append = interpolCoords.append('abund')
+        interpolCoords = interpolCoords.append('abund')
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
                 if self.debug:
