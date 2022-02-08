@@ -44,7 +44,7 @@ def read_random_input_parameters(file):
     # print(values)
     input_par = {'teff':values[:, 0], 'logg':values[:, 1], 'vturb':values[:, 2], 'feh':values[:,3], \
                 'elements' : {
-                            elements[i].capitalize() : {'abund': values[:, i+4], 'nlte':False, 'Z' : atomicZ(el)} \
+                            elements[i].capitalize() : {'abund': values[:, i+4], 'nlte':False, 'Z' : atomicZ(elements[i])} \
                                                 for i in range(len(elements))
                                 }
                 }
@@ -171,7 +171,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
          'MODELOPAC':'./OPAC', 'RESULTFILE':'' }
 
 
-         """ At what wavelenght range to compute a spectrum? """
+        """ At what wavelenght range to compute a spectrum? """
         self.lam_start, self.lam_end = min(self.lam_end, self.lam_start), \
                                     max(self.lam_end, self.lam_start)
         self.wave_step = np.mean([self.lam_start, self.lam_end]) / self.resolution
@@ -192,7 +192,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             if '*' in path:
                 self.linelist.remove(path)
                 self.linelist.extend( glob.glob(path) )
-        print(f"Linelist(s) will be read from: {'\n'.join(x for x in self.linelist)}")
+        print(f"Linelist(s) will be read from: {' ; '.join(str(x) for x in self.linelist)}")
 
         self.ts_input['NFILES'] = len(self.linelist)
         self.ts_input['LINELIST'] = '\n'.join(self.linelist)
