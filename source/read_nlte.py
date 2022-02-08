@@ -60,6 +60,24 @@ def grid_to_ts(grid_file, aux_file, atmos, abund):
 
     return depFile
 
+def write_departures(filePath, tau, depart, abund):
+    ndep = len(depart, axis=1)
+    nk = len(depart)
+    with open(filePath, 'w') as f:
+        # these comment lines have to be here for TS
+        # I can not help it, someone help me
+        for i in range(8):
+            f.write('# parameter 1.0 1.0\n')
+
+        f.write(F"{abund:.3f}\n")
+        f.write(F"{ndep:.0f}\n")
+        f.write(F"{nk:.0f}\n")
+        for t in tau:
+            f.write(F"{t}\n")
+
+        for i in range(ndep):
+            f.write( f"{'  '.join(str(depart[i,j]) for j in range(nk))} \n" )
+
 
 def read_binary_grid(grid_file, pointer=1):
     """ Read a record from NLTE grid """
