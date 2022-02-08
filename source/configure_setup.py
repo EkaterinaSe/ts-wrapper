@@ -9,6 +9,19 @@ from read_nlte import read_full_grid
 Reading the config file and preparing for the computations
 """
 
+def atomicZ(el):
+    if os.path.isfile('./atomic_numbers.dat'):
+        el_z = np.loadtxt('./atomic_numbers.dat', usecols=(0))
+        el_id = np.loadtxt('./atomic_numbers.dat', usecols=(1), dtype=str)
+    else:
+        print("Can not find './atomic_numbers.dat' file. Stopped.")
+        exit(1)
+    for i in range(len(el_id)):
+        if el.lower() == el_id[i].lower():
+            return el_z[i]
+
+
+
 
 def read_random_input_parameters(file):
     """
@@ -33,10 +46,11 @@ def read_random_input_parameters(file):
     # print(values)
     input_par = {'teff':values[:, 0], 'logg':values[:, 1], 'vturb':values[:, 2], 'feh':values[:,3], \
                 'elements' : {
-                            elements[i].capitalize() : {'abund': values[:, i+4], 'nlte':False} \
+                            elements[i].capitalize() : {'abund': values[:, i+4], 'nlte':False, 'Z' : atomicZ(el)} \
                                                 for i in range(len(elements))
                                 }
                 }
+
 
     return input_par
 
@@ -117,7 +131,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             interpolCoords.append('vturb')
 
         "Model atmosphere grid"
-        if self.debug: 
+        if self.debug:
             print("preparing model atmosphere interpolator...")
         modelAtmGrid= get_all_ma_parameters(self.atmos_path, \
                                         format = self.atmos_format, debug=self.debug)
@@ -130,7 +144,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         "NLTE grids"
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
-                if self.debug: 
+                if self.debug:
                     print(f"preparing interpolator for {el}")
 
                 nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
@@ -150,3 +164,35 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                                                     'interpFunction' : interpFunction, \
                                                      'normCoord' : normalisedCoord}
                                                  } )
+
+    def createTSinputFlags(self):
+        self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', \
+        'NLTEINFOFILE':'', 'LAMBDA_MIN':4000, 'LAMBDA_MAX':9000, 'LAMBDA_STEP':0.05,\
+         'MODELOPAC':'./OPAC', 'RESULTFILE':'' }
+
+
+         """ At what wavelenght range to compute a spectrum? """
+        self.lam_start, self.lam_end = min(self.lam_end, self.lam_start), \
+                                    max(self.lam_end, self.lam_start)
+        self.wave_step = np.mean([self.lam_start, self.lam_end]) / self.resolution
+        self.ts_input['LAMBDA_MIN'] = self.lam_start
+        self.ts_input['LAMBDA_MAX'] = self.lam_end
+        self.ts_input['LAMBDA_STEP'] = self.wave_step
+
+
+        """ Linelists """
+        if type(self.linelist) == np.ndarray:
+            pass
+        elif type(self.linelist) == str:
+            self.linelist = np.array([self.linelist])
+        else:
+            print("Do not understand linelist argument.")
+            exit(1)
+        for path in self.linelist:
+            if '*' in path:
+                self.linelist.remove(path)
+                self.linelist.extend( glob.glob(path) )
+        print("Linelist(s) will be read from:", self.linelist)
+
+        self.ts_input['NFILES'] = len(self.linelist)
+        self.ts_input['LINELIST'] = '\n'.join(self.linelist)
