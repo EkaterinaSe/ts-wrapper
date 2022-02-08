@@ -40,8 +40,6 @@ def read_random_input_parameters(file):
 
     return input_par
 
-
-
 class setup(object):
     def __init__(self, file='./config.txt'):
         self.cwd = os.getcwd()
@@ -83,19 +81,23 @@ class setup(object):
         self.nlte_config = d
 
 
-        if not 'nlte_config' in self.__dict__ or len(self.nlte_config) == 0:
-            print(f"{50*'*'}\n Warning: all elements will be computed in LTE!\n To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         if 'inputParams_file' in self.__dict__:
             self.inputParams = read_random_input_parameters(self.inputParams_file)
-            for el in self.inputParams['elements']:
-                if el in self.nlte_config:
-                    self.inputParams['elements'][el]['nlte'] = True
-                    for k in self.nlte_config[el]:
-                        self.inputParams['elements'][el].update({
-                                k : self.nlte_config[el][k]
-                                                            })
-            self.prepInterpolation()
+        else:
+            print("Missing file with input parameters: inputParams_file")
+            exit()
 
+        if 'nlte_config' not in self.__dict__ or len(self.nlte_config) == 0:
+            print(f"{50*'*'}\n Note: all elements will be computed in LTE!\n \
+To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
+        else:
+            for el in self.nlte_config:
+                self.inputParams['elements'][el]['nlte'] = True
+                for k in self.nlte_config[el]:
+                    self.inputParams['elements'][el].update({
+                                                    k : self.nlte_config[el][k]
+                                                            })
+        self.prepInterpolation()
 
 
     def prepInterpolation(self):
@@ -109,43 +111,36 @@ class setup(object):
             'NLTE' : {}
         }
 
-        " Over which parameters (aka coordinates) to interpolate?"
+        " Over which parameters (== coordinates) to interpolate?"
         interpolCoords = ['teff', 'logg', 'feh']
         if 'vturb' in self.inputParams:
             interpolCoords.append('vturb')
 
         "Model atmosphere grid"
-#        if self.debug:
-#            print("preparing model atmosphere interpolator...")
-#        modelAtmGrid= get_all_ma_parameters(self.atmos_path, \
-#                                        format = self.atmos_format, debug=self.debug)
-#
-#
-#        interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
-#
-#        self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
-#                                                'normCoord' : normalisedCoord}
+       if self.debug: print("preparing model atmosphere interpolator...")
+       modelAtmGrid= get_all_ma_parameters(self.atmos_path, \
+                                       format = self.atmos_format, debug=self.debug)
+       interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
+       self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
+                                               'normCoord' : normalisedCoord}
 
         "NLTE grids"
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
-                if self.debug:
-                    print(f"preparing interpolator for {el}")
+                if self.debug: print(f"preparing interpolator for {el}")
 
                 nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                             self.inputParams['elements'][el]['nlteAux'] )
                 # interpolate over abundance?
                 interpolCoords_el = interpolCoords.copy()
-                if min(nlteData['abund']) == max(nlteData['abund']): 
+                if min(nlteData['abund']) == max(nlteData['abund']):
                     pass
                 elif len(np.unique(nlteData['feh'])) == len(np.unique(nlteData['abund'])):
                     pass
                 else:
-                    if debug:
-                        print(f"included interpolation over abundance of {el}")
+                    if debug: print(f"included interpolation over abundance of {el}")
                     interpolCoords_el.append('abund')
 
-                print(interpolCoords_el)
                 interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords_el)
                 self.interpolator['NLTE'].update( { el: {
                                                     'interpFunction' : interpFunction, \

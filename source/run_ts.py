@@ -191,14 +191,6 @@ def compute_with_ts(set, atmos, abund, routine='clean'):
         """ Additionally to saving the spectrum file, read it and add to common dictionary """
         w, f, abs_f = np.loadtxt(set.output_dir + '/' + set.ts_input['RESULTFILE_filename'],  unpack=True)
 
-
-        # """ EXCLUDE REPEATING WAVELENGTH POINTS (can happen 'cause of segments')"""
-        # _, un_ind = np.unique(w, return_index=True)
-        # w, f, abs_f =  zip(*sorted(zip(w[un_ind], f[un_ind], abs_f[un_ind])))
-        # w, f, abs_f = np.array(w), np.array(f), np.array(abs_f)
-
-
-
         return set, w, f, abs_f
 
     if routine.lower() == 'clean':
@@ -207,33 +199,36 @@ def compute_with_ts(set, atmos, abund, routine='clean'):
         set.ts_input['RESULTFILE'] = ''
         set.ts_input['RESULTFILE_filename'] = ''
         set.ts_input['MODELOPAC'] = ''
-        # return
 
 
-"""
-A mini wrapper to operate TurboSpectrum
-Started within PLATO Solar project
-"""
+def parallel_worker(set, ind):
+    """
+    Run TS on a subset of input parameters (==ind)
+    """
+    for i in ind:
+        # create model atmosphere
+        point = [ set.inputParams[k] \
+                for k in self.interpolator['modelAtm']['normCoord'] ]
+        print(point)
+
+    return set
 
 if __name__ == '__main__':
     if len(argv) > 1:
         conf_file = argv[1]
     else:
-        conf_file = './config.txt'
+        print("Usage: ./run_ts.py ./configFile.txt")
+        exit()
     set = setup(file = conf_file)
+
     exit(0)
 
     """ Make directory to save output spectra """
     today = datetime.date.today().strftime("%b-%d-%Y")
     set.output_dir = set.cwd + F"/spectra-{set.element}-{today}/"
     mkdir(set.output_dir)
-    """ In addition dump them all to a dictionary"""
-    spectra_all = { }
-
-    """ Print scaling times"""
-    if set.debug:
-        set.scaling_outputFile = open(set.cwd + '/scaling.dat', 'w')
-        set.scaling_outputFile.write("# atmosphere, A(X), TS routine, run time \n")
+    # """ In addition dump them all to a dictionary"""
+    # spectra_all = { }
 
     """ Loop over requested model atmospheres """
     for atm_file in set.atmos_list:
