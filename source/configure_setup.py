@@ -117,17 +117,21 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             interpolCoords.append('vturb')
 
         "Model atmosphere grid"
-       if self.debug: print("preparing model atmosphere interpolator...")
-       modelAtmGrid= get_all_ma_parameters(self.atmos_path, \
-                                       format = self.atmos_format, debug=self.debug)
-       interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
-       self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
-                                               'normCoord' : normalisedCoord}
+        if self.debug: 
+            print("preparing model atmosphere interpolator...")
+        modelAtmGrid= get_all_ma_parameters(self.atmos_path, \
+                                        format = self.atmos_format, debug=self.debug)
+        interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
+
+
+        self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
+                                                'normCoord' : normalisedCoord}
 
         "NLTE grids"
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
-                if self.debug: print(f"preparing interpolator for {el}")
+                if self.debug: 
+                    print(f"preparing interpolator for {el}")
 
                 nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                             self.inputParams['elements'][el]['nlteAux'] )

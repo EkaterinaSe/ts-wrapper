@@ -207,9 +207,19 @@ def parallel_worker(set, ind):
     """
     for i in ind:
         # create model atmosphere
-        point = [ set.inputParams[k] \
-                for k in self.interpolator['modelAtm']['normCoord'] ]
-        print(point)
+        point = [ set.inputParams[k][i] / set.interpolator['modelAtm']['normCoord'][k] \
+                for k in set.interpolator['modelAtm']['normCoord'] ]
+        tau500, temo, ne, vturb = set.interpolator['modelAtm']['interpFunction'](point)[0]
+        # create nlte departure files
+        for el in  set.inputParams['elements']:
+            if  set.inputParams['elements'][el]['nlte']:
+                point = [ set.inputParams[k][i] / set.interpolator['NLTE'][el]['normCoord'][k] \
+                        for k in set.interpolator['NLTE'][el]['normCoord'] ]  
+                depart = set.interpolator['NLTE'][el]['interpFunction'](point)[0]
+        # write into files
+        # create inpurs for bsyn and babsma
+        # run TS
+        # already parallel-friendly
 
     return set
 
