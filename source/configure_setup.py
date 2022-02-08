@@ -21,8 +21,6 @@ def atomicZ(el):
             return el_z[i]
 
 
-
-
 def read_random_input_parameters(file):
     """
     Read input file listing requested labels
@@ -112,6 +110,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                                                     k : self.nlte_config[el][k]
                                                             })
         self.prepInterpolation()
+        self.createTSinputFlags()
+
 
 
     def prepInterpolation(self):
@@ -186,13 +186,13 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         elif type(self.linelist) == str:
             self.linelist = np.array([self.linelist])
         else:
-            print("Do not understand linelist argument.")
+            print(f"Can nor understand the 'linelist' flag: {self.linelist}")
             exit(1)
         for path in self.linelist:
             if '*' in path:
                 self.linelist.remove(path)
                 self.linelist.extend( glob.glob(path) )
-        print("Linelist(s) will be read from:", self.linelist)
+        print(f"Linelist(s) will be read from: {'\n'.join(x for x in self.linelist)}")
 
         self.ts_input['NFILES'] = len(self.linelist)
         self.ts_input['LINELIST'] = '\n'.join(self.linelist)
