@@ -29,7 +29,7 @@ def compute_babsma(set, atmos):
 
     modelOpacFile = set.ts_root + F"/opac{set.ts_input['LAMBDA_MIN']}_{set.ts_input['LAMBDA_MAX']}_AA_{atmos.id}"
 
-    babsma_conf = babsma_conf + F""" \
+    babsma_conf = F""" \
 'LAMBDA_MIN:'    '{set.ts_input['LAMBDA_MIN']:.3f}'
 'LAMBDA_MAX:'    '{set.ts_input['LAMBDA_MAX']:.3f}'
 'LAMBDA_STEP:'   '{set.ts_input['LAMBDA_STEP']:.3f}'
@@ -62,7 +62,7 @@ def compute_bsyn(set, modelOpacFile, specResultFile, nlteInfoFile=None):
     input:
     atmos (object):     object of model_atmosphere class, init before passing to this function
     """
-    bsyn_config = bsyn_config + F""" \
+    bsyn_config = F""" \
 'NLTE :'          '{set.ts_input['NLTE']}'
 'LAMBDA_MIN:'    '{set.ts_input['LAMBDA_MIN']:.3f}'
 'LAMBDA_MAX:'    '{set.ts_input['LAMBDA_MAX']:.3f}'
@@ -71,7 +71,7 @@ def compute_bsyn(set, modelOpacFile, specResultFile, nlteInfoFile=None):
 'MARCS-FILE:' '{set.ts_input['MARCS-FILE']}'
 'NLTEINFOFILE:' '{nlteInfoFile}'
 'MODELOPAC:'        '{modelOpacFile}'
-'RESULTFILE :'    '{specResultFile]}'
+'RESULTFILE :'    '{specResultFile}'
 'HELIUM     :'    '0.00'
 'NFILES   :' '{set.ts_input['NFILES']}'
 {set.ts_input['LINELIST']}
@@ -137,6 +137,7 @@ def parallel_worker(set, ind):
                 set.interpolator['modelAtm']['interpFunction'](point)[0]
         atmos.depth_scale_type = 'TAU500'
         atmos.feh = set.inputParams['feh'][i]
+        atmos.logg = set.inputParams['logg'][i]
         atmos.id = f"interpol_{i : .0f}"
         atmos.path = f"{tempDir}/atmos.{atmos.id}"
         atmos.write(atmos.path, format = 'm1d')
@@ -150,7 +151,7 @@ def parallel_worker(set, ind):
                 point = [ set.inputParams[k][i] / set.interpolator['NLTE'][el]['normCoord'][k] \
                         for k in set.interpolator['NLTE'][el]['normCoord'] ]
                 depart = set.interpolator['NLTE'][el]['interpFunction'](point)[0]
-                abund = set.inputParams['abund']
+                abund = set.inputParams['elements'][el]['abund'][i]
                 # tau =
 
                 departFile = f"{tempDir}/depart_{el}_{i}"

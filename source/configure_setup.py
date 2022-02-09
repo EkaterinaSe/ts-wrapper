@@ -166,7 +166,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                                                  } )
 
     def createTSinputFlags(self):
-        self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.'\
+        self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\
         'NLTEINFOFILE':'', 'LAMBDA_MIN':4000, 'LAMBDA_MAX':9000, 'LAMBDA_STEP':0.05,\
          'MODELOPAC':'./OPAC', 'RESULTFILE':'' }
 
@@ -201,4 +201,4 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         "Any element in NLTE?"
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
-                selt.ts_input['NLTE'] = '.true.'
+                self.ts_input['NLTE'] = '.true.'
