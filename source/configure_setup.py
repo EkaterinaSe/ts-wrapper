@@ -148,7 +148,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     print(f"preparing interpolator for {el}")
 
                 nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
-                                            self.inputParams['elements'][el]['nlteAux'], rescale=True, depthScale = atmDepthScale )
+                                            self.inputParams['elements'][el]['nlteAux'], \
+                                            rescale=True, depthScale = atmDepthScale )
                 # interpolate over abundance?
                 interpolCoords_el = interpolCoords.copy()
                 if min(nlteData['abund']) == max(nlteData['abund']):

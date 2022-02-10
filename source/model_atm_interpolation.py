@@ -96,7 +96,7 @@ Try setting debug = 1 in config file. Check that expected format of model atmosp
         "Dump all in one file (only done once)"
         with open(save_file, 'wb') as f:
             pickle.dump(params, f)
-    return params, d_sc_new
+    return params
 
 def preInterpolationTests(data, interpol_coords, dataLabel = 'default'):
     """

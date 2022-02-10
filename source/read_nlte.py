@@ -1,5 +1,7 @@
 import numpy as np
 import os
+from scipy.interpolate import interp1d
+from sys import exit
 
 def grid_to_ts(grid_file, aux_file, atmos, abund):
 
@@ -95,7 +97,10 @@ def read_binary_grid(grid_file, pointer=1):
     return ndep, nk, depart, tau
 
 
-def read_full_grid(bin_file, aux_file):
+def read_full_grid(bin_file, aux_file, rescale=False, depthScale=None):
+    if rescale and depthScale == None:
+        print(f"")
+        exit()
     aux = np.genfromtxt(aux_file, \
     dtype = [('atmos_id', 'str'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
              ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
@@ -109,7 +114,12 @@ def read_full_grid(bin_file, aux_file):
     data.update( { 'depart' : [] } )
     for p in data['pointer']:
         ndep, nk, depart, tau = read_binary_grid(bin_file, pointer=p)
+        if rescale:
+            f_int = interp1d(tau, depart)#, fill_value='extrapolate')
+            depart = f_int(depthScale)
         data['depart'].append( np.vstack( (tau, depart) ) )
+
+
     data['depart'] = np.array( data['depart'] )
     return data
 
