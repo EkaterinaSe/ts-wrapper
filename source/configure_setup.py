@@ -8,6 +8,10 @@ from read_nlte import read_full_grid
 """
 Reading the config file and preparing for the computations
 """
+def mkdir(s):
+    if os.path.isdir(s):
+        shutil.rmtree(s)
+    os.mkdir(s)
 
 def atomicZ(el):
     if os.path.isfile('./atomic_numbers.dat'):
@@ -54,7 +58,8 @@ def read_random_input_parameters(file):
 
 class setup(object):
     def __init__(self, file='./config.txt'):
-        self.cwd = os.getcwd()
+        if 'cwd' not in self.__dict__.keys():
+            self.cwd = os.getcwd()
         self.debug = 0
 
         "Read all the keys from the config file"
@@ -91,7 +96,13 @@ class setup(object):
             el, files = l.split(':')[0].strip(), l.split(':')[-1].strip().split(',')
             d.update({el.capitalize() : {'nlteGrid' : files[0], 'nlteAux' : files[1], 'modelAtom' : files[2] }})
         self.nlte_config = d
-
+        "TS needs to access model atoms from the same path for all elements"
+        if 'modelAtomsPath' not in self.__dict__.keys():
+            self.modelAtomsPath = f"{self.cwd}/modelAtoms/"
+            os.mkdir(self.modelAtomsPath)
+            for el in self.nlte_config:
+                dst = self.modelAtomsPath + self.nlte_config[el]['modelAtom'].split('/')[-1]
+                os.symlink(self.nlte_config[el]['modelAtom'], dst )
 
         if 'inputParams_file' in self.__dict__:
             self.inputParams = read_random_input_parameters(self.inputParams_file)
@@ -146,7 +157,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             if self.inputParams['elements'][el]['nlte']:
                 if self.debug:
                     print(f"preparing interpolator for {el}")
-               
+
                 # 0th element is tau, 1th-Nth are departures for N levels
                 nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                             self.inputParams['elements'][el]['nlteAux'], \
