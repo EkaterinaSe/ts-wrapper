@@ -12,7 +12,7 @@ import time
 import convolve
 from configure_setup import setup
 from atmos_package import read_atmos_marcs, model_atmosphere
-from read_nlte import grid_to_ts, write_departures
+from read_nlte import grid_to_ts, write_departures_forTS
 
 def mkdir(s):
     if os.path.isdir(s):
@@ -155,13 +155,16 @@ def parallel_worker(set, ind):
                 # tau =
 
                 departFile = f"{tempDir}/depart_{el}_{i}"
-                write_departures(departFile, tau, depart, abund)
+                tau = depart[0]
+                depart_coef = depart[1:]
+                write_departures_forTS(departFile, tau, depart_coef, abund)
                 set.inputParams['elements'][el].update({
                                 'departFile' : departFile
                                                         })
 
         """ Compute the spectrum """
         specResultFile = f"{tempDir}/spec_{i}"
+        nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
         create_NlteInfoFile(nlteInfoFile, set)
         compute_bsyn(set, modelOpacFile, specResultFile, nlteInfoFile)
 

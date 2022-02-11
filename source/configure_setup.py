@@ -146,7 +146,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             if self.inputParams['elements'][el]['nlte']:
                 if self.debug:
                     print(f"preparing interpolator for {el}")
-
+               
+                # 0th element is tau, 1th-Nth are departures for N levels
                 nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                             self.inputParams['elements'][el]['nlteAux'], \
                                             rescale=True, depthScale = atmDepthScale )

@@ -62,9 +62,11 @@ def grid_to_ts(grid_file, aux_file, atmos, abund):
 
     return depFile
 
-def write_departures(filePath, tau, depart, abund):
-    ndep = len(depart, axis=1)
+def write_departures_forTS(filePath, tau, depart, abund):
+    ndep = len(tau)
     nk = len(depart)
+    print(ndep, nk)
+    print(np.shape(tau), np.shape(depart))
     with open(filePath, 'w') as f:
         # these comment lines have to be here for TS
         # I can not help it, someone help me
@@ -78,7 +80,7 @@ def write_departures(filePath, tau, depart, abund):
             f.write(F"{t}\n")
 
         for i in range(ndep):
-            f.write( f"{'  '.join(str(depart[i,j]) for j in range(nk))} \n" )
+            f.write( f"{'  '.join(str(depart[j,i]) for j in range(nk))} \n" )
 
 
 def read_binary_grid(grid_file, pointer=1):
@@ -98,9 +100,9 @@ def read_binary_grid(grid_file, pointer=1):
 
 
 def read_full_grid(bin_file, aux_file, rescale=False, depthScale=None):
-    if rescale and depthScale == None:
-        print(f"")
-        exit()
+    if rescale and isinstance(depthScale, type(None)):
+            print(f"to re-scale NLTE departure coefficient, please supply new depth scale to read_full_grid() ")
+            exit()
     aux = np.genfromtxt(aux_file, \
     dtype = [('atmos_id', 'str'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
              ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
@@ -113,11 +115,14 @@ def read_full_grid(bin_file, aux_file, rescale=False, depthScale=None):
     # read and save each record from the binary file
     data.update( { 'depart' : [] } )
     for p in data['pointer']:
+        #print(f"{100*p/data['pointer'][-1]:.2f}")
         ndep, nk, depart, tau = read_binary_grid(bin_file, pointer=p)
         if rescale:
-            f_int = interp1d(tau, depart)#, fill_value='extrapolate')
-            depart = f_int(depthScale)
-        data['depart'].append( np.vstack( (tau, depart) ) )
+            depart_new = np.full(  shape=(len(depthScale), nk), fill_value=np.nan)
+            f_int = interp1d(tau, depart, fill_value='extrapolate')
+            depart_new = f_int(depthScale)
+        data['depart'].append( np.vstack([depthScale, depart_new]) )
+        
 
 
     data['depart'] = np.array( data['depart'] )
