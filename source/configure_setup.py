@@ -55,9 +55,9 @@ def read_random_input_parameters(file):
                 }
     if 'Fe' not in input_par['elements']:
         print(f"Warning: input contains [Fe/H], but no A(Fe)")
-    absAbundCheck = [ input_par['elements'][el]['abund'] / 12. for el in input_par['elements'] ]
-    if np.median(absAbundCheck) < 1:
-        print(f"Warning: abundances must be supplied relative to H, on log12 scale")
+    absAbundCheck = np.array([ input_par['elements'][el]['abund'] / 12. for el in input_par['elements'] ])
+    if (absAbundCheck < 0.1).any():
+        print(f"Warning: abundances must be supplied relative to H, on log12 scale. Please double check input file '{file}'")
 
 
 
