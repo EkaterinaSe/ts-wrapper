@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import shutil
 from sys import argv, exit
 from model_atm_interpolation import get_all_ma_parameters, NDinterpolate_MA, NDinterpolate_NLTE_grid
 from read_nlte import read_full_grid
@@ -98,8 +99,8 @@ class setup(object):
         self.nlte_config = d
         "TS needs to access model atoms from the same path for all elements"
         if 'modelAtomsPath' not in self.__dict__.keys():
-            self.modelAtomsPath = f"{self.cwd}/modelAtoms/"
-            os.mkdir(self.modelAtomsPath)
+            self.modelAtomsPath = f"{self.cwd}/modelAtoms_links/"
+            mkdir(self.modelAtomsPath)
             for el in self.nlte_config:
                 dst = self.modelAtomsPath + self.nlte_config[el]['modelAtom'].split('/')[-1]
                 os.symlink(self.nlte_config[el]['modelAtom'], dst )

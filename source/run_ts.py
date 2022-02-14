@@ -57,7 +57,7 @@ def compute_babsma(set, atmos):
 
     return modelOpacFile
 
-def compute_bsyn(set, modelOpacFile, specResultFile, nlteInfoFile=None):
+def compute_bsyn(set, ind, modelOpacFile, specResultFile, nlteInfoFile=None):
     """
     input:
     atmos (object):     object of model_atmosphere class, init before passing to this function
@@ -84,9 +84,7 @@ def compute_bsyn(set, modelOpacFile, specResultFile, nlteInfoFile=None):
     bsyn_config = bsyn_config +\
             f"'INDIVIDUAL ABUNDANCES:'   '{len(set.inputParams['elements'])}'"
     for el in set.inputParams['elements']:
-        bsyn_config = bsyn_config + f"""\
-{set.inputParams['elements'][el]['abund']:5.3f} {set.inputParams['elements'][el]['Z']:.0f}
-"""
+        bsyn_config = bsyn_config + f"{set.inputParams['elements'][el]['abund'][ind]:5.3f} {set.inputParams['elements'][el]['Z']:.0f} \n"
 # TODO: spherical models???
 
     """ Run bsyn """
@@ -94,7 +92,7 @@ def compute_bsyn(set, modelOpacFile, specResultFile, nlteInfoFile=None):
     os.chdir(set.ts_root)
     pr = subprocess.Popen(['./exec/bsyn_lu'], stdin=subprocess.PIPE, \
         stdout=open(set.cwd + '/bsyn.log', 'w'), stderr=subprocess.STDOUT )
-    pr.stdin.write(bytes(bsyn_conf, 'utf-8'))
+    pr.stdin.write(bytes(bsyn_config, 'utf-8'))
     pr.communicate()
     pr.wait()
     os.chdir(set.cwd)
@@ -113,12 +111,12 @@ def create_NlteInfoFile(filePath, set):
         nlte_info_file.write('# atomic (non)LTE setup \n')
         for el in set.inputParams['elements']:
             Z = set.inputParams['elements'][el]['Z']
-            depart_file = set.inputParams['elements'][el]['departFile']
-            model_atom_id = set.inputParams['elements'][el]['modelAtom'].split('/')[-1]
             if set.inputParams['elements'][el]['nlte']:
-                nlte_info_file.write(F"{Z}  '{el}'  'nlte' '{model_atom_id}'  '{depart_file}' 'ascii' ")
+                depart_file = set.inputParams['elements'][el]['departFile']
+                model_atom_id = set.inputParams['elements'][el]['modelAtom'].split('/')[-1]
+                nlte_info_file.write(F"{Z}  '{el}'  'nlte' '{model_atom_id}'  '{depart_file}' 'ascii' \n")
             else:
-                nlte_info_file.write(F"{Z}  '{el}'  'lte' ' '  ' ' 'ascii' ")
+                nlte_info_file.write(F"{Z}  '{el}'  'lte' ' '  ' ' 'ascii' \n")
 
 def parallel_worker(set, ind):
     """
@@ -166,7 +164,7 @@ def parallel_worker(set, ind):
         specResultFile = f"{tempDir}/spec_{i}"
         nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
         create_NlteInfoFile(nlteInfoFile, set)
-        compute_bsyn(set, modelOpacFile, specResultFile, nlteInfoFile)
+        compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
 
     return set
 
