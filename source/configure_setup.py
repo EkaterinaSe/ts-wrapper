@@ -33,9 +33,9 @@ def read_random_input_parameters(file):
     First four columns are Teff, logg, Vturb, Fe, then all the elements
     Example:
     -----
-    Teff logg Vturb Fe H O Mg Ca Mn Ni # Ba
-    5535  2.91  0.0  -1.036   0.0   0.810 -0.369  0.663 -0.854 -0.219 # 0.02
-    7245  5.74  0.0  -0.493   0.0  -0.589  0.303  0.440  0.595  0.243 # -4.2
+    Teff logg Vturb FeH Fe H O # Ba
+    5535  2.91  0.0  -1.03  6.470  12.0   9.610 # 2.24
+    7245  5.74  0.0  -0.50  7.000  12.0   8.009 # -2.2
     ....
     -----
     """
@@ -53,6 +53,12 @@ def read_random_input_parameters(file):
                                                 for i in range(len(elements))
                                 }
                 }
+    if 'Fe' not in input_par['elements']:
+        print(f"Warning: input contains [Fe/H], but no A(Fe)")
+    absAbundCheck = [ input_par['elements'][el]['abund'] / 12. for el in input_par['elements'] ]
+    if np.median(absAbundCheck) < 1:
+        print(f"Warning: abundances must be supplied relative to H, on log12 scale")
+
 
 
     return input_par
