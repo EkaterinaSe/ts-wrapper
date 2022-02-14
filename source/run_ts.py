@@ -28,6 +28,7 @@ def compute_babsma(set, atmos):
     """
 
     modelOpacFile = set.ts_root + F"/opac{set.ts_input['LAMBDA_MIN']}_{set.ts_input['LAMBDA_MAX']}_AA_{atmos.id}"
+    print(modelOpacFile)
 
     babsma_conf = F""" \
 'LAMBDA_MIN:'    '{set.ts_input['LAMBDA_MIN']:.3f}'
@@ -82,9 +83,9 @@ def compute_bsyn(set, ind, modelOpacFile, specResultFile, nlteInfoFile=None):
   1.30
 """
     bsyn_config = bsyn_config +\
-            f"'INDIVIDUAL ABUNDANCES:'   '{len(set.inputParams['elements'])}'"
+            f"'INDIVIDUAL ABUNDANCES:'   '{len(set.inputParams['elements'])}' \n"
     for el in set.inputParams['elements']:
-        bsyn_config = bsyn_config + f"{set.inputParams['elements'][el]['abund'][ind]:5.3f} {set.inputParams['elements'][el]['Z']:.0f} \n"
+        bsyn_config = bsyn_config + f" {set.inputParams['elements'][el]['Z']:.0f} {set.inputParams['elements'][el]['abund'][ind]:5.3f} \n"
 # TODO: spherical models???
 
     """ Run bsyn """
@@ -136,7 +137,7 @@ def parallel_worker(set, ind):
         atmos.depth_scale_type = 'TAU500'
         atmos.feh = set.inputParams['feh'][i]
         atmos.logg = set.inputParams['logg'][i]
-        atmos.id = f"interpol_{i : .0f}"
+        atmos.id = f"interpol_{i:05d}"
         atmos.path = f"{tempDir}/atmos.{atmos.id}"
         atmos.write(atmos.path, format = 'm1d')
 
