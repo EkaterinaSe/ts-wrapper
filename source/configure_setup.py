@@ -200,6 +200,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                                                     'interpFunction' : interpFunction, \
                                                      'normCoord' : normalisedCoord}
                                                  } )
+                nlteData = None
 
     def createTSinputFlags(self):
         self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\
@@ -237,3 +238,4 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         "Any element in NLTE?"
         if self.nlte:
             self.ts_input['NLTE'] = '.true.'
+
