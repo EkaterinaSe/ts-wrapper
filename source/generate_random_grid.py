@@ -24,5 +24,5 @@ if __name__ == '__main__':
         print("Usage: ./run_ts.py ./configFile.txt")
         exit()
     set = setup(file = conf_file)
-    ind = [0,1,2]
+    ind = [0]
     set = parallel_worker(set, ind)
