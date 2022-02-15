@@ -134,12 +134,14 @@ def parallel_worker(set, ind):
         atmos = model_atmosphere()
         atmos.depth_scale, atmos.temp, atmos.ne, atmos.vturb = \
                 set.interpolator['modelAtm']['interpFunction'](point)[0]
+        "Interpolation is done on the log scale"
+        atmos.temp, atmos.ne = 10**(atmos.temp), 10**(atmos.ne)
         atmos.depth_scale_type = 'TAU500'
         atmos.feh = set.inputParams['feh'][i]
         atmos.logg = set.inputParams['logg'][i]
         atmos.id = f"interpol_{i:05d}"
         atmos.path = f"{tempDir}/atmos.{atmos.id}"
-        atmos.write(atmos.path, format = 'm1d')
+        atmos.write(atmos.path, format = 'ts')
 
         """ Compute model atmosphere opacity """
         modelOpacFile = compute_babsma(set, atmos)
