@@ -127,6 +127,15 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     self.inputParams['elements'][el].update({
                                                     k : self.nlte_config[el][k]
                                                             })
+
+        for el in self.inputParams['elements']:
+            if self.inputParams['elements'][el]['nlte']:
+                self.nlte = True
+                break
+
+        today = datetime.date.today().strftime("%b-%d-%Y")
+        self.spectraDir = self.cwd + f"/spectra-{today}/"
+
         self.prepInterpolation()
         self.createTSinputFlags()
 
@@ -218,7 +227,6 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         self.ts_input['LINELIST'] = '\n'.join(self.linelist)
 
 
-        "Any element in NLTE?"
-        for el in self.inputParams['elements']:
-            if self.inputParams['elements'][el]['nlte']:
-                self.ts_input['NLTE'] = '.true.'
+        "Any element in NLTE?":
+        if self.nlte:
+            self.ts_input['NLTE'] = '.true.'

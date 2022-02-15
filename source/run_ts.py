@@ -164,10 +164,18 @@ def parallel_worker(set, ind):
                                                         })
 
         """ Compute the spectrum """
-        specResultFile = f"{tempDir}/spec_{i}"
+        specResultFile = f"{tempDir}/spec_{'_'.join( ''.join(el, set.inputParams['elements'][el]['abund'][i]) for el in set.inputParams['elements'] )}"
+        if set.nlte:
+            specResultFile = specResultFile + '_NLTE'
+        else:
+            specResultFile = specResultFile + '_LTE'
+        print(specResultFile)
+
         nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
         create_NlteInfoFile(nlteInfoFile, set)
         compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
+        shutil.move(specResultFile, '/'.join(set.spectraDir + specResultFile) )
+        
 
     return set
 
