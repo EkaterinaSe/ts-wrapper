@@ -6,6 +6,8 @@ import datetime
 # local
 from model_atm_interpolation import get_all_ma_parameters, NDinterpolate_MA, NDinterpolate_NLTE_grid
 from read_nlte import read_fullNLTE_grid
+from atmos_package import model_atmosphere
+
 
 """
 Reading the config file and preparing for the computations
@@ -144,6 +146,10 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             os.mkdir(self.spectraDir)
 
         self.prepInterpolation()
+
+        self.interpolateAllPoints()
+
+
         self.createTSinputFlags()
 
 
@@ -200,7 +206,31 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                                                     'interpFunction' : interpFunction, \
                                                      'normCoord' : normalisedCoord}
                                                  } )
-                nlteData = None
+
+    def interpolateAllPoints(self):
+        """
+        Python parallelisation libraries can not send more than X Gb of data between processes
+        To avoid that, interpolation at each requested point is done before the start of computations
+        """
+        if self.debug:
+            print(f"Interpolating to each of {self.inputParams['count']} requested points...")
+
+        self.inputParams.update({'modelAtmInterpol' : np.full(self.inputParams['count'], None) })
+
+        for i in range(self.inputParams['count']):
+            point = [ set.inputParams[k][i] / set.interpolator['modelAtm']['normCoord'][k] \
+                    for k in set.interpolator['modelAtm']['normCoord'] ]
+            self.inputParams['modelAtmInterpol'][i] = \
+                    set.interpolator['modelAtm']['interpFunction'](point)[0]
+
+
+            for el in self.inputParams['elements']
+                point = [ set.inputParams[k][i] / set.interpolator['NLTE'][el]['normCoord'][k] \
+                        for k in set.interpolator['NLTE'][el]['normCoord'] ]
+                self.inputParams['elements'][el].update({
+                'departInterpol' : set.interpolator['NLTE'][el]['interpFunction'](point)[0]
+                })
+
 
     def createTSinputFlags(self):
         self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\
@@ -238,4 +268,3 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         "Any element in NLTE?"
         if self.nlte:
             self.ts_input['NLTE'] = '.true.'
-

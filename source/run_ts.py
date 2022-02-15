@@ -126,17 +126,12 @@ def parallel_worker(set, ind):
 
     for i in ind:
         # create model atmosphere and run babsma on it
-        point = [ set.inputParams[k][i] / set.interpolator['modelAtm']['normCoord'][k] \
-                for k in set.interpolator['modelAtm']['normCoord'] ]
-
         atmos = model_atmosphere()
         atmos.depth_scale, atmos.temp, atmos.ne, atmos.vturb = \
-                set.interpolator['modelAtm']['interpFunction'](point)[0]
-        "Interpolation is done on the log scale"
+            set.inputParams['modelAtmInterpol'][i]
         atmos.temp, atmos.ne = 10**(atmos.temp), 10**(atmos.ne)
         atmos.depth_scale_type = 'TAU500'
-        atmos.feh = set.inputParams['feh'][i]
-        atmos.logg = set.inputParams['logg'][i]
+        atmos.feh, atmos.logg = set.inputParams['feh'][i], set.inputParams['logg'][i]
         atmos.id = f"interpol_{i:05d}"
         atmos.path = f"{tempDir}/atmos.{atmos.id}"
         atmos.write(atmos.path, format = 'ts')
@@ -174,7 +169,7 @@ def parallel_worker(set, ind):
         create_NlteInfoFile(nlteInfoFile, set)
         compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
         shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
-        
+
     return set
 
 if __name__ == '__main__':
