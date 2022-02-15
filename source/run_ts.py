@@ -177,7 +177,6 @@ def parallel_worker(set, ind):
         compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
         shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile}" )
         
-
     return set
 
 if __name__ == '__main__':

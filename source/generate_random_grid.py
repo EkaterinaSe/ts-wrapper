@@ -8,8 +8,8 @@ import numpy as np
 import pickle
 import glob
 import time
+from multiprocessing import Pool
 # local
-import convolve
 from configure_setup import setup
 from atmos_package import read_atmos_marcs, model_atmosphere
 from read_nlte import grid_to_ts
@@ -24,5 +24,17 @@ if __name__ == '__main__':
         print("Usage: ./run_ts.py ./configFile.txt")
         exit()
     set = setup(file = conf_file)
-    ind = [0,1,2]
+    if set.ncpu > set.inputParams['count']:
+        set.ncpu = set.inputParams['count']
+        print(f"Requested more CPUs than jobs. Will use {set.ncpu}")
+
+    ind = np.arange(set.inputParams['count'])
+    args = []
+    args = [ [set, ind[i::ncpu]] for i in range(set.ncpu)]
+    print(args)
+
+    with Pool(processes=set.ncpu) as pool:
+            pool.map( parallel_worker, args )
+
+    ind = [0]
     set = parallel_worker(set, ind)

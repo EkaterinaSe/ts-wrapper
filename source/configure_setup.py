@@ -54,6 +54,7 @@ def read_random_input_parameters(file):
                                                 for i in range(len(elements))
                                 }
                 }
+    input_par.update({'count' : len(input_par['teff'])})
     if 'Fe' not in input_par['elements']:
         print(f"Warning: input contains [Fe/H], but no A(Fe)")
     absAbundCheck = np.array([ input_par['elements'][el]['abund'] / 12. for el in input_par['elements'] ])
@@ -69,6 +70,7 @@ class setup(object):
         if 'cwd' not in self.__dict__.keys():
             self.cwd = os.getcwd()
         self.debug = 0
+        self.ncpu  = 1
 
         "Read all the keys from the config file"
         for line in open(file, 'r').readlines():
