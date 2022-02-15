@@ -2,9 +2,10 @@ import numpy as np
 import os
 import shutil
 from sys import argv, exit
+import datetime
+# local
 from model_atm_interpolation import get_all_ma_parameters, NDinterpolate_MA, NDinterpolate_NLTE_grid
 from read_nlte import read_full_grid
-# local
 
 """
 Reading the config file and preparing for the computations
@@ -135,6 +136,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
 
         today = datetime.date.today().strftime("%b-%d-%Y")
         self.spectraDir = self.cwd + f"/spectra-{today}/"
+        if not os.path.isdir(self.spectraDir):
+            os.mkdir(self.spectraDir)
 
         self.prepInterpolation()
         self.createTSinputFlags()
@@ -227,6 +230,6 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         self.ts_input['LINELIST'] = '\n'.join(self.linelist)
 
 
-        "Any element in NLTE?":
+        "Any element in NLTE?"
         if self.nlte:
             self.ts_input['NLTE'] = '.true.'

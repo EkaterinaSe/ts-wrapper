@@ -3,7 +3,6 @@ import os
 from sys import argv
 import shutil
 import subprocess
-import datetime
 import numpy as np
 import pickle
 import glob
@@ -164,7 +163,9 @@ def parallel_worker(set, ind):
                                                         })
 
         """ Compute the spectrum """
-        specResultFile = f"{tempDir}/spec_{'_'.join( ''.join(el, set.inputParams['elements'][el]['abund'][i]) for el in set.inputParams['elements'] )}"
+        specResultFile = f"{tempDir}/spec"
+        for el in set.inputParams['elements']:
+            specResultFile = specResultFile + f"_{el}{set.inputParams['elements'][el]['abund'][i]}"
         if set.nlte:
             specResultFile = specResultFile + '_NLTE'
         else:
@@ -174,7 +175,7 @@ def parallel_worker(set, ind):
         nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
         create_NlteInfoFile(nlteInfoFile, set)
         compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
-        shutil.move(specResultFile, '/'.join(set.spectraDir + specResultFile) )
+        shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile}" )
         
 
     return set
