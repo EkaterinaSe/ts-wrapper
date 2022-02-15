@@ -107,7 +107,7 @@ def create_NlteInfoFile(filePath, set):
 
         nlte_info_file.write('# path for departure files ! this comment line has to be here !\n')
         # input NLTE departure file will be written in the cwd, so set path to:
-        nlte_info_file.write(F"{set.cwd}/ \n")
+        nlte_info_file.write(F" \n")
         nlte_info_file.write('# atomic (non)LTE setup \n')
         for el in set.inputParams['elements']:
             Z = set.inputParams['elements'][el]['Z']
@@ -152,7 +152,6 @@ def parallel_worker(set, ind):
                         for k in set.interpolator['NLTE'][el]['normCoord'] ]
                 depart = set.interpolator['NLTE'][el]['interpFunction'](point)[0]
                 abund = set.inputParams['elements'][el]['abund'][i]
-                # tau =
 
                 departFile = f"{tempDir}/depart_{el}_{i}"
                 tau = depart[0]
@@ -175,7 +174,7 @@ def parallel_worker(set, ind):
         nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
         create_NlteInfoFile(nlteInfoFile, set)
         compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
-        shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile}" )
+        shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
         
     return set
 

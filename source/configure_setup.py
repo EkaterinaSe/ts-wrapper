@@ -5,7 +5,7 @@ from sys import argv, exit
 import datetime
 # local
 from model_atm_interpolation import get_all_ma_parameters, NDinterpolate_MA, NDinterpolate_NLTE_grid
-from read_nlte import read_full_grid
+from read_nlte import read_fullNLTE_grid
 
 """
 Reading the config file and preparing for the computations
@@ -68,7 +68,7 @@ def read_random_input_parameters(file):
 class setup(object):
     def __init__(self, file='./config.txt'):
         if 'cwd' not in self.__dict__.keys():
-            self.cwd = os.getcwd()
+            self.cwd = f"{os.getcwd()}/"
         self.debug = 0
         self.ncpu  = 1
 
@@ -103,7 +103,9 @@ class setup(object):
         d = {}
         for l in self.nlte_config:
             l = l.replace('[','').replace(']','').replace("'","")
-            el, files = l.split(':')[0].strip(), l.split(':')[-1].strip().split(',')
+            el, files = l.split(':')[0].strip(), l.split(':')[-1].split(',')
+            files = [ f.strip() for f in files ]
+            files = [ f.replace('./', self.cwd) if f.startswith('./') else f  for f in files]
             d.update({el.capitalize() : {'nlteGrid' : files[0], 'nlteAux' : files[1], 'modelAtom' : files[2] }})
         self.nlte_config = d
         "TS needs to access model atoms from the same path for all elements"
@@ -180,7 +182,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     print(f"preparing interpolator for {el}")
 
                 # 0th element is tau, 1th-Nth are departures for N levels
-                nlteData = read_full_grid( self.inputParams['elements'][el]['nlteGrid'], \
+                nlteData = read_fullNLTE_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                             self.inputParams['elements'][el]['nlteAux'], \
                                             rescale=True, depthScale = atmDepthScale )
                 # interpolate over abundance?
