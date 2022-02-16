@@ -148,6 +148,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         self.prepInterpolation()
 
         self.interpolateAllPoints()
+        self.interpolator = None
 
 
         self.createTSinputFlags()
@@ -218,18 +219,22 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         self.inputParams.update({'modelAtmInterpol' : np.full(self.inputParams['count'], None) })
 
         for i in range(self.inputParams['count']):
-            point = [ set.inputParams[k][i] / set.interpolator['modelAtm']['normCoord'][k] \
-                    for k in set.interpolator['modelAtm']['normCoord'] ]
+            point = [ self.inputParams[k][i] / self.interpolator['modelAtm']['normCoord'][k] \
+                    for k in self.interpolator['modelAtm']['normCoord'] ]
             self.inputParams['modelAtmInterpol'][i] = \
-                    set.interpolator['modelAtm']['interpFunction'](point)[0]
+                    self.interpolator['modelAtm']['interpFunction'](point)[0]
 
 
-            for el in self.inputParams['elements']
-                point = [ set.inputParams[k][i] / set.interpolator['NLTE'][el]['normCoord'][k] \
-                        for k in set.interpolator['NLTE'][el]['normCoord'] ]
+        for el in self.inputParams['elements']:
+            if self.inputParams['elements'][el]['nlte']:
                 self.inputParams['elements'][el].update({
-                'departInterpol' : set.interpolator['NLTE'][el]['interpFunction'](point)[0]
+                        'departInterpol' : []
                 })
+                for i in range(self.inputParams['count']):
+                    point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
+                            for k in self.interpolator['NLTE'][el]['normCoord'] ]
+                    self.inputParams['elements'][el]['departInterpol'].append( self.interpolator['NLTE'][el]['interpFunction'](point)[0])
+                self.inputParams['elements'][el]['departInterpol'] = np.array(self.inputParams['elements'][el]['departInterpol'])
 
 
     def createTSinputFlags(self):

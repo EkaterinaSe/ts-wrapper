@@ -117,10 +117,11 @@ def create_NlteInfoFile(filePath, set):
             else:
                 nlte_info_file.write(F"{Z}  '{el}'  'lte' ' '  ' ' 'ascii' \n")
 
-def parallel_worker(set, ind):
+def parallel_worker(arg):
     """
     Run TS on a subset of input parameters (== ind)
     """
+    set, ind = arg
     tempDir = f"{set.cwd}/{min(ind)}_{max(ind)}/"
     mkdir(tempDir)
 
@@ -142,9 +143,7 @@ def parallel_worker(set, ind):
         # create nlte departure files
         for el in set.inputParams['elements']:
             if  set.inputParams['elements'][el]['nlte']:
-                point = [ set.inputParams[k][i] / set.interpolator['NLTE'][el]['normCoord'][k] \
-                        for k in set.interpolator['NLTE'][el]['normCoord'] ]
-                depart = set.interpolator['NLTE'][el]['interpFunction'](point)[0]
+                depart = set.inputParams['elements'][el]['departInterpol'][i]
                 abund = set.inputParams['elements'][el]['abund'][i]
 
                 departFile = f"{tempDir}/depart_{el}_{i}"
