@@ -30,16 +30,16 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
     if os.path.isfile(save_file) and os.path.getsize(save_file) > 0:
         with open(save_file, 'rb') as f:
             params = pickle.load(f)
-        d_sc_new = params['structure'][:, np.where(params['structure_keys'][0] == 'tau500')[0][0] ]
-        if np.shape(d_sc_new) != np.shape(np.unique(d_sc_new, axis=1)):
+        DepthScaleNew = params['structure'][:, np.where(params['structure_keys'][0] == 'tau500')[0][0] ]
+        if np.shape(DepthScaleNew) != np.shape(np.unique(DepthScaleNew, axis=1)):
             print(f"depth scale is not uniform in the model atmosphere grid read from {save_file}")
             print(f"try removing file {save_file} and run the code again")
             exit()
         else:
-            d_sc_new = np.array(d_sc_new[0])
+            DepthScaleNew = np.array(DepthScaleNew[0])
     else:
         print(f"Checking all model atmospheres under {models_path}")
-        d_sc_new = np.linspace(-5, 2, 100)
+        DepthScaleNew = np.linspace(-5, 2, 100)
 
         params = {
         'teff':[], 'logg':[], 'feh':[], 'vturb':[], 'file':[], 'structure':[], 'structure_keys':[], 'mass':[]\
@@ -70,8 +70,8 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
                         # bring all values to the same depth_scale (tau500)
                         for par in ['temp', 'ne', 'vturb']:
                             f_int = interp1d(ma.depth_scale, ma.__dict__[par], fill_value='extrapolate')
-                            ma.__dict__[par] = f_int(d_sc_new)
-                        ma.depth_scale = d_sc_new
+                            ma.__dict__[par] = f_int(DepthScaleNew)
+                        ma.depth_scale = DepthScaleNew
 
                         params['structure'].append( np.vstack( (ma.depth_scale, ma.temp, ma.ne, ma.vturb )  ) )
                         params['structure_keys'].append( ['tau500', 'temp', 'ne', 'vturb'])
@@ -103,7 +103,7 @@ Try setting debug = 1 in config file. Check that expected format of model atmosp
         "Dump all in one file (only done once)"
         with open(save_file, 'wb') as f:
             pickle.dump(params, f)
-    return params, d_sc_new
+    return params, DepthScaleNew
 
 def preInterpolationTests(data, interpol_coords, dataLabel = 'default'):
     """
