@@ -50,20 +50,13 @@ def read_random_input_parameters(file):
     values = np.array(values).astype(float)
 
     # print(values)
-    input_par = {'teff':values[:, 0], 'logg':values[:, 1], 'vturb':values[:, 2], 'feh':values[:,3], \
+    input_par = {'teff':values[:, 0], 'logg':values[:, 1], 'feh':values[:,2], 'vturb':values[:, 3], \
                 'elements' : {
                             elements[i].capitalize() : {'abund': values[:, i+4], 'nlte':False, 'Z' : atomicZ(elements[i])} \
                                                 for i in range(len(elements))
                                 }
                 }
     input_par.update({'count' : len(input_par['teff'])})
-    if 'Fe' not in input_par['elements']:
-        print(f"Warning: input contains [Fe/H], but no A(Fe)")
-    absAbundCheck = np.array([ input_par['elements'][el]['abund'] / 12. for el in input_par['elements'] ])
-    if (absAbundCheck < 0.1).any():
-        print(f"Warning: abundances must be supplied relative to H, on log12 scale. Please double check input file '{file}'")
-
-
 
     return input_par
 
@@ -120,6 +113,16 @@ class setup(object):
 
         if 'inputParams_file' in self.__dict__:
             self.inputParams = read_random_input_parameters(self.inputParams_file)
+            if self.debug:
+                print("Example of requested input parameters:")
+                print(f"Teff   = {self.inputParams['teff'][0]}")
+                print(f"log(g) = {self.inputParams['logg'][0]}")
+                print(f"[Fe/H] = {self.inputParams['feh'][0]}")
+                print(f"Vmic   = {self.inputParams['vturb'][0]}")
+                print("Individual abundances:")
+                print('\n'.join(f"A({el}) = {self.inputParams['elements']['abund'][0]:10.3f}" \
+                        for el in self.inputParams['elements']))
+
         else:
             print("Missing file with input parameters: inputParams_file")
             exit()
@@ -134,6 +137,10 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     self.inputParams['elements'][el].update({
                                                     k : self.nlte_config[el][k]
                                                             })
+            if debug:
+                for el in self.inputParams['elements']:
+                    mode = ['Non-LTE' if self.inputParams['elements'][el]['nlte'] else 'LTE']
+                    print(f"{el} will be included in {mode}")
 
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
