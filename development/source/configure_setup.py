@@ -235,9 +235,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     for k in self.interpolator['modelAtm']['normCoord'] ]
             if not in_hull(np.array(point).T, self.interpolator['modelAtm']['hull']):
                 countOutsideHull += 1
-                if self.debug:
-                    print(f"Point {[self.inputParams[k][i] \
-                    for k in self.interpolator['modelAtm']['normCoord']]} at i = {i} is outside of hull. Skipping the point")
+            #    if self.debug:
+                    #print(f"Point {[self.inputParams[k][i] for k in self.interpolator['modelAtm']['normCoord']]} at i = {i} is outside of hull. Skipping the point")
             else:
                 values =  self.interpolator['modelAtm']['interpFunction'](point)[0]
                 self.inputParams['modelAtmInterpol'][i] = values
@@ -253,8 +252,8 @@ points are outside of the model atmosphere grid. No computations will be done")
                             for k in self.interpolator['NLTE'][el]['normCoord'] ]
                     if not in_hull(np.array(point).T, interpolator['NLTE'][el]['hull']):
                         values = None
-                        if self.debug:
-                            print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull... Tell me what to do with it...")
+                 #       if self.debug:
+                  #          print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull... Tell me what to do with it...")
                     else:
                         values = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
                     self.inputParams['elements'][el]['departInterpol'].append( values )

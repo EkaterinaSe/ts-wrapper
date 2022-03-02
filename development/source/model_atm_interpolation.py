@@ -28,6 +28,8 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
     save_file = f"{models_path}/all_models_save.pkl"
 
     if os.path.isfile(save_file) and os.path.getsize(save_file) > 0:
+        if debug:
+            print(f"reading pickled grid of model atmospheres from {save_file}")
         with open(save_file, 'rb') as f:
             params = pickle.load(f)
         d_sc_new = params['structure'][:, np.where(params['structure_keys'][0] == 'tau500')[0][0] ]
@@ -144,7 +146,7 @@ in parameters {k} and {k1}")
 
 def NDinterpolateGrid(all_par, interpol_par, valueKey = 'structure', dataLabel='model_atm'):
 
-    preInterpolationTests(all_par, interpol_par, dataLabel=dataLabel)
+    preInterpolationTests(all_par, interpol_par, valueKey = valueKey,dataLabel=dataLabel)
 
     " Normalise the coordinates of the grid "
     points = []
