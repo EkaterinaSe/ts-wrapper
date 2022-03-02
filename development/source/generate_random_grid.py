@@ -28,7 +28,6 @@ if __name__ == '__main__':
 
     ind = np.arange(set.inputParams['count'])
     args = [ [set, ind[i::set.ncpu]] for i in range(set.ncpu)]
-    print(args)
 
     with Pool(processes=set.ncpu) as pool:
         pool.map(parallel_worker, args )

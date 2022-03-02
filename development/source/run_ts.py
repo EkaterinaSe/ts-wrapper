@@ -26,7 +26,6 @@ def compute_babsma(set, atmos):
     """
 
     modelOpacFile = set.ts_root + F"/opac{set.ts_input['LAMBDA_MIN']}_{set.ts_input['LAMBDA_MAX']}_AA_{atmos.id}"
-    print(modelOpacFile)
 
     babsma_conf = F""" \
 'LAMBDA_MIN:'    '{set.ts_input['LAMBDA_MIN']:.3f}'
@@ -165,7 +164,6 @@ def parallel_worker(arg):
                 specResultFile = specResultFile + '_NLTE'
             else:
                 specResultFile = specResultFile + '_LTE'
-            print(specResultFile)
 
             if set.nlte:
                 nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
@@ -176,6 +174,7 @@ def parallel_worker(arg):
 
             os.remove(atmos.path)
             os.remove(modelOpacFile)
+            os.remove(modelOpacFile+'.mod')
     return set
 
 if __name__ == '__main__':

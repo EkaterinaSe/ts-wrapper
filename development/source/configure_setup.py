@@ -55,7 +55,6 @@ def read_random_input_parameters(file):
     values =  [ l.split() for l in data[1:] ]
     values = np.array(values).astype(float)
 
-    # print(values)
     input_par = {'teff':values[:, 0], 'logg':values[:, 1], 'vturb':values[:, 2], 'feh':values[:,3], \
                 'elements' : {
                             elements[i].capitalize() : {'abund': values[:, i+4], 'nlte':False, 'Z' : atomicZ(elements[i])} \
