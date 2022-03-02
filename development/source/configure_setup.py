@@ -13,7 +13,6 @@ from scipy.spatial import Delaunay
 def in_hull(p, hull):
    return hull.find_simplex(p) >= 0
 
-
 """
 Reading the config file and preparing for the computations
 """
@@ -156,11 +155,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             os.mkdir(self.spectraDir)
 
         self.prepInterpolation()
-
         self.interpolateAllPoints()
-        self.interpolator = None
-
-
         self.createTSinputFlags()
 
 
@@ -231,21 +226,25 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         """
         if self.debug: print(f"Interpolating to each of {self.inputParams['count']} requested points...")
 
+        "Model atmosphere grid"
         self.inputParams.update({'modelAtmInterpol' : np.full(self.inputParams['count'], None) })
 
+        countOutsideHull = 0
         for i in range(self.inputParams['count']):
             point = [ self.inputParams[k][i] / self.interpolator['modelAtm']['normCoord'][k] \
                     for k in self.interpolator['modelAtm']['normCoord'] ]
-
             if not in_hull(np.array(point).T, self.interpolator['modelAtm']['hull']):
+                countOutsideHull += 1
                 if self.debug:
                     print(f"Point {[self.inputParams[k][i] \
                     for k in self.interpolator['modelAtm']['normCoord']]} at i = {i} is outside of hull. Skipping the point")
             else:
                 values =  self.interpolator['modelAtm']['interpFunction'](point)[0]
                 self.inputParams['modelAtmInterpol'][i] = values
+        if self.debug: print(f"{countOutsideHull}/{self.inputParams['count']}requested \
+points are outside of the model atmosphere grid. No computations will be done")
 
-
+        " NLTE grids "
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
                 self.inputParams['elements'][el].update({'departInterpol' : [] })
@@ -255,9 +254,10 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     if not in_hull(np.array(point).T, interpolator['NLTE'][el]['hull']):
                         values = None
                         if self.debug:
-                            print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull. Skipping the point")
-                    else: values = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
-                    self.inputParams['elements'][el]['departInterpol'].append( values)
+                            print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull... Tell me what to do with it...")
+                    else:
+                        values = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
+                    self.inputParams['elements'][el]['departInterpol'].append( values )
 
                 self.inputParams['elements'][el]['departInterpol'] = np.array(self.inputParams['elements'][el]['departInterpol'])
 

@@ -130,48 +130,49 @@ def parallel_worker(arg):
     for i in ind:
         # create model atmosphere and run babsma on it
         atmos = model_atmosphere()
-        atmos.depth_scale, atmos.temp, atmos.ne, atmos.vturb = \
-            set.inputParams['modelAtmInterpol'][i]
-        atmos.temp, atmos.ne = 10**(atmos.temp), 10**(atmos.ne)
-        atmos.depth_scale_type = 'TAU500'
-        atmos.feh, atmos.logg = set.inputParams['feh'][i], set.inputParams['logg'][i]
-        atmos.id = f"interpol_{i:05d}"
-        atmos.path = f"{tempDir}/atmos.{atmos.id}"
-        atmos.write(atmos.path, format = 'ts')
+        if not isinstance(set.inputParams['modelAtmInterpol'][i], None):
+            atmos.depth_scale, atmos.temp, atmos.ne, atmos.vturb = \
+                set.inputParams['modelAtmInterpol'][i]
+            atmos.temp, atmos.ne = 10**(atmos.temp), 10**(atmos.ne)
+            atmos.depth_scale_type = 'TAU500'
+            atmos.feh, atmos.logg = set.inputParams['feh'][i], set.inputParams['logg'][i]
+            atmos.id = f"interpol_{i:05d}"
+            atmos.path = f"{tempDir}/atmos.{atmos.id}"
+            atmos.write(atmos.path, format = 'ts')
 
-        """ Compute model atmosphere opacity """
-        modelOpacFile = compute_babsma(set, atmos)
+            """ Compute model atmosphere opacity """
+            modelOpacFile = compute_babsma(set, atmos)
 
-        # create nlte departure files
-        for el in set.inputParams['elements']:
-            if  set.inputParams['elements'][el]['nlte']:
-                depart = set.inputParams['elements'][el]['departInterpol'][i]
-                abund = set.inputParams['elements'][el]['abund'][i]
+            # create nlte departure files
+            for el in set.inputParams['elements']:
+                if  set.inputParams['elements'][el]['nlte']:
+                    depart = set.inputParams['elements'][el]['departInterpol'][i]
+                    abund = set.inputParams['elements'][el]['abund'][i]
 
-                departFile = f"{tempDir}/depart_{el}_{i}"
-                tau = depart[0]
-                depart_coef = depart[1:]
-                write_departures_forTS(departFile, tau, depart_coef, abund)
-                set.inputParams['elements'][el].update({
-                                'departFile' : departFile
-                                                        })
+                    departFile = f"{tempDir}/depart_{el}_{i}"
+                    tau = depart[0]
+                    depart_coef = depart[1:]
+                    write_departures_forTS(departFile, tau, depart_coef, abund)
+                    set.inputParams['elements'][el].update({
+                                    'departFile' : departFile
+                                                            })
 
-        """ Compute the spectrum """
-        specResultFile = f"{tempDir}/spec"
-        for el in set.inputParams['elements']:
-            specResultFile = specResultFile + f"_{el}{set.inputParams['elements'][el]['abund'][i]}"
-        if set.nlte:
-            specResultFile = specResultFile + '_NLTE'
-        else:
-            specResultFile = specResultFile + '_LTE'
-        print(specResultFile)
-        
-        if set.nlte:
-            nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
-            create_NlteInfoFile(nlteInfoFile, set)
-        else: nlteInfoFile = None
-        compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
-        shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
+            """ Compute the spectrum """
+            specResultFile = f"{tempDir}/spec"
+            for el in set.inputParams['elements']:
+                specResultFile = specResultFile + f"_{el}{set.inputParams['elements'][el]['abund'][i]}"
+            if set.nlte:
+                specResultFile = specResultFile + '_NLTE'
+            else:
+                specResultFile = specResultFile + '_LTE'
+            print(specResultFile)
+
+            if set.nlte:
+                nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
+                create_NlteInfoFile(nlteInfoFile, set)
+            else: nlteInfoFile = None
+            compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
+            shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
 
     return set
 
