@@ -78,13 +78,14 @@ def compute_bsyn(set, ind, modelOpacFile, specResultFile, nlteInfoFile=None):
   15
   1.30
 """
-    if nlteInfoFile is not None:
-        bsyn_config = bsyn_config + f'NLTEINFOFILE:' '{nlteInfoFile} \n'
+    if not isinstance(nlteInfoFile,  type(None)):
+        bsyn_config = bsyn_config + f"'NLTEINFOFILE:' '{nlteInfoFile}' \n"
 
     bsyn_config = bsyn_config +\
             f"'INDIVIDUAL ABUNDANCES:'   '{len(set.inputParams['elements'])}' \n"
     for el in set.inputParams['elements']:
         bsyn_config = bsyn_config + f" {set.inputParams['elements'][el]['Z']:.0f} {set.inputParams['elements'][el]['abund'][ind]:5.3f} \n"
+    print(bsyn_config)
 # TODO: spherical models???
 
     """ Run bsyn """

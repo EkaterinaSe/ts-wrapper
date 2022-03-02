@@ -155,6 +155,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
 
         self.prepInterpolation()
         self.interpolateAllPoints()
+        "Lose interpolator from the memory"
+        self.interpolator = None
         self.createTSinputFlags()
 
 
@@ -210,9 +212,9 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     if debug: print(f"included interpolation over abundance of {el}")
                     interpolCoords_el.append('abund')
 
-                interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords_el,\
-                                                        valueKey='nlteData', dataLabel=f"NLTE grid {el}")
-                hull = Delaunay(np.array([ nlteData /normalisedCoord[k] for k in interpolCoords_el ]).T)
+                interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
+                                                        valueKey='depart', dataLabel=f"NLTE grid {el}")
+                hull = Delaunay(np.array([ nlteData[k] /normalisedCoord[k] for k in interpolCoords_el ]).T)
                 self.interpolator['NLTE'].update( { el: {
                                                     'interpFunction' : interpFunction, \
                                                      'normCoord' : normalisedCoord, 'hull':hull }
@@ -249,7 +251,7 @@ points are outside of the model atmosphere grid. No computations will be done")
                 for i in range(self.inputParams['count']):
                     point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
                             for k in self.interpolator['NLTE'][el]['normCoord'] ]
-                    if not in_hull(np.array(point).T, interpolator['NLTE'][el]['hull']):
+                    if not in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull']):
                         values = None
                  #       if self.debug:
                   #          print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull... Tell me what to do with it...")
