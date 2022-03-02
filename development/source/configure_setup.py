@@ -5,14 +5,14 @@ from sys import argv, exit
 import datetime
 import glob
 # local
-from model_atm_interpolation import get_all_ma_parameters, NDinterpolate_MA, NDinterpolate_NLTE_grid
+from model_atm_interpolation import get_all_ma_parameters, NDinterpolateGrid
 from read_nlte import read_fullNLTE_grid
 from atmos_package import model_atmosphere
 from scipy.spatial import Delaunay
 
 def in_hull(p, hull):
    return hull.find_simplex(p) >= 0
- 
+
 
 """
 Reading the config file and preparing for the computations
@@ -118,7 +118,7 @@ class setup(object):
                 files = [ f.replace('./', self.cwd) if f.startswith('./') else f  for f in files]
                 d.update({el.capitalize() : {'nlteGrid' : files[0], 'nlteAux' : files[1], 'modelAtom' : files[2] }})
             self.nlte_config = d
-        
+
             "TS needs to access model atoms from the same path for all elements"
             if 'modelAtomsPath' not in self.__dict__.keys():
                 self.modelAtomsPath = f"{self.cwd}/modelAtoms_links/"
@@ -177,42 +177,36 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         }
 
         " Over which parameters (== coordinates) to interpolate?"
-        interpolCoords = ['teff', 'logg', 'feh']
+        interpolCoords = ['teff', 'logg', 'feh'] # order should match input file!
         if 'vturb' in self.inputParams:
             interpolCoords.append('vturb')
 
         "Model atmosphere grid"
-        if self.debug:
-            print("preparing model atmosphere interpolator...")
+        if self.debug: print("preparing model atmosphere interpolator...")
         modelAtmGrid, atmDepthScale = get_all_ma_parameters(self.atmos_path, \
                                         format = self.atmos_format, debug=self.debug)
-
-        if self.debug:
-            print('Parameters in the model atmosphere grid')
-            for k in ['teff', 'logg', 'feh', 'vturb']:
-                print(f"max({k}) = {np.max(modelAtmGrid[k])}, min({k}) = {np.min(modelAtmGrid[k])}")
-                if np.isnan(modelAtmGrid[k]).any():
-                    print(f"found NaN in {k}")
-            if np.isnan(modelAtmGrid['structure']).any():
-                print("Found NaN in the structure")       
-        interpFunction, normalisedCoord = NDinterpolate_MA(modelAtmGrid, interpolCoords )
-        " Create hull to test whether requested point is within interpolation grid " 
+        interpFunction, normalisedCoord = NDinterpolateGrid(modelAtmGrid, interpolCoords, \
+                                        valueKey='structure', dataLabel = 'model atmosphere grid' )
+        """
+        Create hull object to test whether which of the requested points
+        are within the original grid
+        Interpolation outside of hull returns NaNs, therefore skip those points
+        """
         hull = Delaunay(np.array([ modelAtmGrid[k] / normalisedCoord[k] for k in interpolCoords ]).T)
 
         self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
-                                                'normCoord' : normalisedCoord, 'hull': hull}
+                                        'normCoord' : normalisedCoord, \
+                                        'hull': hull}
 
         "NLTE grids"
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
-                if self.debug:
-                    print(f"preparing interpolator for {el}")
-
-                # 0th element is tau, 1th-Nth are departures for N levels
+                if self.debug: print(f"preparing interpolator for {el}")
+                " 0th element is tau, 1th-Nth are departures for N levels "
                 nlteData = read_fullNLTE_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                             self.inputParams['elements'][el]['nlteAux'], \
                                             rescale=True, depthScale = atmDepthScale )
-                # interpolate over abundance?
+                " interpolate over abundance? "
                 interpolCoords_el = interpolCoords.copy()
                 if min(nlteData['abund']) == max(nlteData['abund']):
                     pass
@@ -222,7 +216,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     if debug: print(f"included interpolation over abundance of {el}")
                     interpolCoords_el.append('abund')
 
-                interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords_el)
+                interpFunction, normalisedCoord  = NDinterpolate_NLTE_grid(nlteData, interpolCoords_el,\
+                                                        valueKey='nlteData', dataLabel=f"NLTE grid {el}")
                 hull = Delaunay(np.array([ nlteData /normalisedCoord[k] for k in interpolCoords_el ]).T)
                 self.interpolator['NLTE'].update( { el: {
                                                     'interpFunction' : interpFunction, \
@@ -234,8 +229,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         Python parallelisation libraries can not send more than X Gb of data between processes
         To avoid that, interpolation at each requested point is done before the start of computations
         """
-        if self.debug:
-            print(f"Interpolating to each of {self.inputParams['count']} requested points...")
+        if self.debug: print(f"Interpolating to each of {self.inputParams['count']} requested points...")
 
         self.inputParams.update({'modelAtmInterpol' : np.full(self.inputParams['count'], None) })
 
@@ -243,24 +237,22 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             point = [ self.inputParams[k][i] / self.interpolator['modelAtm']['normCoord'][k] \
                     for k in self.interpolator['modelAtm']['normCoord'] ]
 
-            if not in_hull(np.array(point).T, self.interpolator['modelAtm']['hull']): 
-                values = None
+            if not in_hull(np.array(point).T, self.interpolator['modelAtm']['hull']):
                 if self.debug:
-                    print(f"Point {[self.inputParams[k][i] for k in self.interpolator['modelAtm']['normCoord']]} at i = {i} is outside of hull. Skipping the point")
+                    print(f"Point {[self.inputParams[k][i] \
+                    for k in self.interpolator['modelAtm']['normCoord']]} at i = {i} is outside of hull. Skipping the point")
             else:
                 values =  self.interpolator['modelAtm']['interpFunction'](point)[0]
-            self.inputParams['modelAtmInterpol'][i] = values
+                self.inputParams['modelAtmInterpol'][i] = values
 
 
         for el in self.inputParams['elements']:
             if self.inputParams['elements'][el]['nlte']:
-                self.inputParams['elements'][el].update({
-                        'departInterpol' : []
-                })
+                self.inputParams['elements'][el].update({'departInterpol' : [] })
                 for i in range(self.inputParams['count']):
                     point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
                             for k in self.interpolator['NLTE'][el]['normCoord'] ]
-                    if not in_hull(np.array(point).T, interpolator['NLTE'][el]['hull']): 
+                    if not in_hull(np.array(point).T, interpolator['NLTE'][el]['hull']):
                         values = None
                         if self.debug:
                             print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull. Skipping the point")

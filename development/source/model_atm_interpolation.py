@@ -105,7 +105,7 @@ Try setting debug = 1 in config file. Check that expected format of model atmosp
             pickle.dump(params, f)
     return params, d_sc_new
 
-def preInterpolationTests(data, interpol_coords, dataLabel = 'default'):
+def preInterpolationTests(data, interpol_coords, valueKey, dataLabel = 'default'):
     """
     Run multiple tests to catch possible exceptions
     that could affect the performance of the underlying
@@ -125,7 +125,6 @@ def preInterpolationTests(data, interpol_coords, dataLabel = 'default'):
 has repetitive points")
         exit()
 
-
     "Any coordinates correspond to the same value? e.g. [Fe/H] and A(Fe) "
     for k in interpol_coords:
         for k1 in interpol_coords:
@@ -136,13 +135,16 @@ has repetitive points")
 in parameters {k} and {k1}")
                     exit()
 
-    # todo check for NaNs
-    return
+    for k in interpol_coords:
+        if np.isnan(data[k]).any():
+                print(f"Warning: found NaN in coordinate {k} in grid '{dataLabel}'")
+    if np.isnan(data[valueKey]).any():
+        print(f"Found NaN in {valueKey} array of {dataLabel} grid")
 
 
-def NDinterpolate_MA(all_par, interpol_par):
+def NDinterpolateGrid(all_par, interpol_par, valueKey = 'structure', dataLabel='model_atm'):
 
-    preInterpolationTests(all_par, interpol_par, dataLabel='model_atm')
+    preInterpolationTests(all_par, interpol_par, dataLabel=dataLabel)
 
     " Normalise the coordinates of the grid "
     points = []
@@ -153,26 +155,8 @@ def NDinterpolate_MA(all_par, interpol_par):
     points = np.array(points).T
 
     "Create the function that interpolates model atmospheres structure"
-    values = all_par['structure']
+    values = all_par[valueKey]
 
-    interp_f = LinearNDInterpolator(points, values)
-
-    return interp_f, norm_coord
-
-
-def NDinterpolate_NLTE_grid(nlte_data, interpol_coords):
-
-    preInterpolationTests(nlte_data, interpol_coords, dataLabel='NLTE')
-
-    " Normalise the coordinates of the grid "
-    points = []
-    norm_coord = {}
-    for k in interpol_coords:
-        points.append(nlte_data[k] / max(nlte_data[k]) )
-        norm_coord.update( { k :  max(nlte_data[k])} )
-    points = np.array(points).T
-
-    values = nlte_data['depart']
     interp_f = LinearNDInterpolator(points, values)
 
     return interp_f, norm_coord
