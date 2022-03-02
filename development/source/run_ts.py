@@ -68,7 +68,6 @@ def compute_bsyn(set, ind, modelOpacFile, specResultFile, nlteInfoFile=None):
 'LAMBDA_STEP:'   '{set.ts_input['LAMBDA_STEP']:.3f}'
 'INTENSITY/FLUX:' 'Flux'
 'MARCS-FILE:' '{set.ts_input['MARCS-FILE']}'
-'NLTEINFOFILE:' '{nlteInfoFile}'
 'MODELOPAC:'        '{modelOpacFile}'
 'RESULTFILE :'    '{specResultFile}'
 'HELIUM     :'    '0.00'
@@ -80,6 +79,9 @@ def compute_bsyn(set, ind, modelOpacFile, specResultFile, nlteInfoFile=None):
   15
   1.30
 """
+    if nlteInfoFile is not None:
+        bsyn_config = bsyn_config + f'NLTEINFOFILE:' '{nlteInfoFile} \n'
+
     bsyn_config = bsyn_config +\
             f"'INDIVIDUAL ABUNDANCES:'   '{len(set.inputParams['elements'])}' \n"
     for el in set.inputParams['elements']:
@@ -163,9 +165,11 @@ def parallel_worker(arg):
         else:
             specResultFile = specResultFile + '_LTE'
         print(specResultFile)
-
-        nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
-        create_NlteInfoFile(nlteInfoFile, set)
+        
+        if set.nlte:
+            nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
+            create_NlteInfoFile(nlteInfoFile, set)
+        else: nlteInfoFile = None
         compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
         shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
 

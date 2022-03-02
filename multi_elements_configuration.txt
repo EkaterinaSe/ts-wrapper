@@ -1,2 +1,0 @@
-# element  abundance flag, if 1: new abundance, if 2: start end step abundance, if 3: ...  LTE/NLTE
-O 1 8.7 0 0 LTE '' ''
