@@ -240,7 +240,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             else:
                 values =  self.interpolator['modelAtm']['interpFunction'](point)[0]
                 self.inputParams['modelAtmInterpol'][i] = values
-        if self.debug: print(f"{countOutsideHull}/{self.inputParams['count']}requested \
+        if countOutsideHull > 0 and self.debug: print(f"{countOutsideHull}/{self.inputParams['count']}requested \
 points are outside of the model atmosphere grid. No computations will be done")
 
         " NLTE grids "
