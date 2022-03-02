@@ -130,7 +130,7 @@ def parallel_worker(arg):
     for i in ind:
         # create model atmosphere and run babsma on it
         atmos = model_atmosphere()
-        if not isinstance(set.inputParams['modelAtmInterpol'][i], None):
+        if not isinstance(set.inputParams['modelAtmInterpol'][i], type(None)):
             atmos.depth_scale, atmos.temp, atmos.ne, atmos.vturb = \
                 set.inputParams['modelAtmInterpol'][i]
             atmos.temp, atmos.ne = 10**(atmos.temp), 10**(atmos.ne)
@@ -174,6 +174,8 @@ def parallel_worker(arg):
             compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
             shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
 
+            os.remove(atmos.path)
+            os.remove(modelOpacFile)
     return set
 
 if __name__ == '__main__':
