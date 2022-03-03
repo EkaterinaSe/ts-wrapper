@@ -4,11 +4,12 @@ import shutil
 from sys import argv, exit
 import datetime
 import glob
+from scipy.spatial import Delaunay
 # local
 from model_atm_interpolation import get_all_ma_parameters, NDinterpolateGrid
 from read_nlte import read_fullNLTE_grid
 from atmos_package import model_atmosphere
-from scipy.spatial import Delaunay
+from run_ts import write_departures_forTS
 
 def in_hull(p, hull):
    return hull.find_simplex(p) >= 0
@@ -155,6 +156,13 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         if not os.path.isdir(self.spectraDir):
             os.mkdir(self.spectraDir)
 
+
+        "Temporary directories for NLTE files"
+        for el in self.inputParams['elements']:
+            path = self.cwd + f"/{el}_nlteDepFiles/"
+            mkdir(path)
+            self.inputParams['elements'][el].update({'dirNLTE':path})
+
         print('preparing interpolators')
         self.prepInterpolation()
         print('interpolating to each point')
@@ -250,21 +258,27 @@ points are outside of the model atmosphere grid. No computations will be done")
 
         " NLTE grids "
         for el in self.inputParams['elements']:
+            departFile = None
             if self.inputParams['elements'][el]['nlte']:
-                self.inputParams['elements'][el].update({'departInterpol' : [] })
                 for i in range(self.inputParams['count']):
                     point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
                             for k in self.interpolator['NLTE'][el]['normCoord'] ]
                     if not in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull']):
-                        values = None
-                 #       if self.debug:
-                  #          print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull... Tell me what to do with it...")
+                        depart = None
+                        if self.debug:
+                           print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull... Tell me what to do with it...")
+                           # exit()
                     else:
-                        values = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
-                    self.inputParams['elements'][el]['departInterpol'].append( values )
+                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
 
-                self.inputParams['elements'][el]['departInterpol'] = np.array(self.inputParams['elements'][el]['departInterpol'])
-
+                        tau = depart[0]
+                        depart_coef = depart[1:]
+                        departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
+                        abund = set.inputParams['elements'][el]['abund'][i]
+                        write_departures_forTS(departFile, tau, depart_coef, abund)
+            set.inputParams['elements'][el].update({
+                            'departFile' : departFile
+                                                    })
 
     def createTSinputFlags(self):
         self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\

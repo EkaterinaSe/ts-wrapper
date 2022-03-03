@@ -112,8 +112,8 @@ def create_NlteInfoFile(filePath, set):
         nlte_info_file.write('# atomic (non)LTE setup \n')
         for el in set.inputParams['elements']:
             Z = set.inputParams['elements'][el]['Z']
-            if set.inputParams['elements'][el]['nlte']:
-                depart_file = set.inputParams['elements'][el]['departFile']
+            depart_file = set.inputParams['elements'][el]['departFile']
+            if set.inputParams['elements'][el]['nlte'] and  not isinstance(depart_file, type(None)):
                 model_atom_id = set.inputParams['elements'][el]['modelAtom'].split('/')[-1]
                 nlte_info_file.write(F"{Z}  '{el}'  'nlte' '{model_atom_id}'  '{depart_file}' 'ascii' \n")
             else:
@@ -144,21 +144,6 @@ def parallel_worker(arg):
 
             """ Compute model atmosphere opacity """
             modelOpacFile = compute_babsma(set, atmos)
-
-            # create nlte departure files
-            for el in set.inputParams['elements']:
-                if  set.inputParams['elements'][el]['nlte']:
-                    depart = set.inputParams['elements'][el]['departInterpol'][i]
-                    set.inputParams['elements'][el]['departInterpol'][i] = None
-                    abund = set.inputParams['elements'][el]['abund'][i]
-
-                    departFile = f"{tempDir}/depart_{el}_{i}"
-                    tau = depart[0]
-                    depart_coef = depart[1:]
-                    write_departures_forTS(departFile, tau, depart_coef, abund)
-                    set.inputParams['elements'][el].update({
-                                    'departFile' : departFile
-                                                            })
 
             """ Compute the spectrum """
             specResultFile = f"{tempDir}/spec"

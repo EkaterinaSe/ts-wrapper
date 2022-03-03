@@ -120,7 +120,7 @@ def read_fullNLTE_grid(bin_file, aux_file, rescale=False, depthScale=None):
             f_int = interp1d(tau, depart, fill_value='extrapolate')
             depart_new = f_int(depthScale)
         data['depart'].append( np.vstack([depthScale, depart_new]) )
-        
+
 
 
     data['depart'] = np.array( data['depart'] )
