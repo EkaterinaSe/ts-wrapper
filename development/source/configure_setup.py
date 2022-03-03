@@ -162,24 +162,29 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 mkdir(path)
                 self.inputParams['elements'][el].update({'dirNLTE':path})
 
-        self.prepInterpolation()
-        self.interpolateAllPoints()
-        "Lose interpolator from the memory"
-        self.interpolator = None
+        self.prepInterpolation_MA()
+        self.interpolateAllPoints_MA()
+        self.interpolator['modelAtm'] = None
+        # have to work with one nlte grid at a time to avoid memory overflow
+        if self.nlte:
+            self.interpolator.update({'NLTE':{}})
+            for el in self.inputParams['elements']:
+                if self.inputParams['elements'][el]['nlte']:
+                    self.prepInterpolation_NLTE(el)
+                    self.interpolateAllPoints_NLTE(el)
+                    self.interpolator['NLTE'][el] = None
+
         self.createTSinputFlags()
 
 
 
-    def prepInterpolation(self):
+    def prepInterpolation_MA(self):
         """
         Read grid of model atmospheres and NLTE grids of departures
         and prepare interpolating functions
         Store for future use
         """
-        self.interpolator = {
-            'modelAtm' : None,
-            'NLTE' : {}
-        }
+        self.interpolator = {'modelAtm' : None}
 
         " Over which parameters (== coordinates) to interpolate?"
         interpolCoords = ['teff', 'logg', 'feh'] # order should match input file!
@@ -203,36 +208,36 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                                         'normCoord' : normalisedCoord, \
                                         'hull': hull}
 
+    def prepInterpolation_NLTE(self, el):
         "NLTE grids"
-        for el in self.inputParams['elements']:
-            if self.inputParams['elements'][el]['nlte']:
-                if self.debug: print(f"preparing interpolator for {el}")
-                " 0th element is tau, 1th-Nth are departures for N levels "
-                nlteData = read_fullNLTE_grid( self.inputParams['elements'][el]['nlteGrid'], \
-                                            self.inputParams['elements'][el]['nlteAux'], \
-                                            rescale=True, depthScale = atmDepthScale )
-                " interpolate over abundance? "
-                interpolCoords_el = interpolCoords.copy()
-                if min(nlteData['abund']) == max(nlteData['abund']):
-                    pass
-                elif len(np.unique(nlteData['feh'])) == len(np.unique(nlteData['abund'])): # it is Fe
-                    coords = [c for c in interpolCoords_el if c!='feh']
-                    coords.append('abund')
-                    interpolCoords_el = coords
-                    if self.debug: print(f"for Fe grid interpolating over abundance rather than feh")
-                else:
-                    if self.debug: print(f"included interpolation over abundance of {el}")
-                    interpolCoords_el.append('abund')
+        if self.debug: print(f"preparing interpolator for {el}")
+        " 0th element is tau, 1th-Nth are departures for N levels "
+        nlteData = read_fullNLTE_grid( self.inputParams['elements'][el]['nlteGrid'], \
+                                    self.inputParams['elements'][el]['nlteAux'], \
+                                    rescale=True, depthScale = atmDepthScale )
+        " interpolate over abundance? "
+        interpolCoords_el = interpolCoords.copy()
+        if min(nlteData['abund']) == max(nlteData['abund']):
+            pass
+        elif len(np.unique(nlteData['feh'])) == len(np.unique(nlteData['abund'])): # it is Fe
+            coords = [c for c in interpolCoords_el if c!='feh']
+            interpolCoords_el = coords
+            interpolCoords_el.append('abund')
+            if self.debug: print(f"for Fe grid interpolating over abundance rather than feh")
+        else:
+            if self.debug: print(f"included interpolation over abundance of {el}")
+            interpolCoords_el.append('abund')
 
-                interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
-                                                        valueKey='depart', dataLabel=f"NLTE grid {el}")
-                hull = Delaunay(np.array([ nlteData[k] /normalisedCoord[k] for k in interpolCoords_el ]).T)
-                self.interpolator['NLTE'].update( { el: {
-                                                    'interpFunction' : interpFunction, \
-                                                     'normCoord' : normalisedCoord, 'hull':hull }
-                                                 } )
+        interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
+                                                valueKey='depart', dataLabel=f"NLTE grid {el}")
+        hull = Delaunay(np.array([ nlteData[k] /normalisedCoord[k] for k in interpolCoords_el ]).T)
+        self.interpolator['NLTE'].update( { el: {
+                                            'interpFunction' : interpFunction, \
+                                             'normCoord' : normalisedCoord, 'hull':hull }
+                                         } )
+        nlteData = None
 
-    def interpolateAllPoints(self):
+    def interpolateAllPoints_MA(self):
         """
         Python parallelisation libraries can not send more than X Gb of data between processes
         To avoid that, interpolation at each requested point is done before the start of computations
@@ -248,49 +253,57 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     for k in self.interpolator['modelAtm']['normCoord'] ]
             if not in_hull(np.array(point).T, self.interpolator['modelAtm']['hull']):
                 countOutsideHull += 1
-            #    if self.debug:
-                    #print(f"Point {[self.inputParams[k][i] for k in self.interpolator['modelAtm']['normCoord']]} at i = {i} is outside of hull. Skipping the point")
             else:
                 values =  self.interpolator['modelAtm']['interpFunction'](point)[0]
                 self.inputParams['modelAtmInterpol'][i] = values
-        if countOutsideHull > 0 and self.debug: print(f"{countOutsideHull}/{self.inputParams['count']}requested \
+        if countOutsideHull > 0 and self.debug:
+            print(f"{countOutsideHull}/{self.inputParams['count']}requested \
 points are outside of the model atmosphere grid. No computations will be done")
 
+    def interpolateAllPoints_NLTE(self, el):
         " NLTE grids "
-        for el in self.inputParams['elements']:
-            departFile = None
-            if self.inputParams['elements'][el]['nlte']:
-                for i in range(self.inputParams['count']):
-                    point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
-                            for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
-                    if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
-                        abund = self.inputParams['elements'][el]['abund'][i]
-                        point.append(abund)
-                    if not in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull']):
-                        " Try to find a closer abundance value "
-                        if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
-                            shift = 0.0
-                            sign = [-1 if abund > np.mean(self.inputParams['elements'][el]['abund']) else 1][0]
-                            while not in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull']) and shift <= 0.5:
-                                abund = abund + sign * 0.1
-                                point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
-                                        for k in self.interpolator['NLTE'][el]['normCoord'] if k != 'abund' ]
-                                point.append(abund)
-                                shift += 0.1
-                                print(f"{el} at abund={abund:.2f} is outside of hull. trying abund={abund + sign * shift:.2f}")
-                            if self.debug: print(f"{abund} is inside the hull, interpolating")
-                        else: print(f"WARNING: point outside of hull, but abundance is not a free parameter for {el}")
+        self.inputParams['elements'][el].update({
+                        'departFile' : np.full(self.inputParams['count'], None)
+                                                })
 
-                    else:
+        for i in range(self.inputParams['count']):
+            depart = None
+
+            point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
+                    for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
+            if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
+                abund = self.inputParams['elements'][el]['abund'][i]
+                point.append(abund)
+
+            fallsIntoHull = in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull'])
+            if not fallsIntoHull:
+                " Trying to find a closer abundance value "
+                if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
+                    shift = 0.0
+                    sign = [-1 if abund > np.mean(self.inputParams['elements'][el]['abund']) else 1][0]
+
+                    while not fallsIntoHull and shift <= 0.5: # dont walk futher than 0.5 dex from the requested abundance
+                        abund = abund + sign * 0.1
+                        point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
+                                for k in self.interpolator['NLTE'][el]['normCoord'] if k != 'abund' ]
+                        point.append(abund)
+                        fallsIntoHull = in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull'])
+                        shift += 0.1
+                        if self.debug: print(f"{el} at abund={abund:.2f} is outside of hull. trying abund={abund + sign * shift:.2f}")
+                    if fallsIntoHull:
                         depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
 
-                        tau = depart[0]
-                        depart_coef = depart[1:]
-                        departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
-                        write_departures_forTS(departFile, tau, depart_coef, abund)
-            self.inputParams['elements'][el].update({
-                            'departFile' : departFile
-                                                    })
+                else: print(f"WARNING: point outside of hull, but abundance is not a free parameter for {el}")
+
+            else:
+                depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
+
+            if not isinstance(depart, type(None)):
+                tau = depart[0]
+                depart_coef = depart[1:]
+                departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
+                write_departures_forTS(departFile, tau, depart_coef, abund)
+                self.inputParams['elements'][el]['departFile'][i] = departFile
 
     def createTSinputFlags(self):
         self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\
