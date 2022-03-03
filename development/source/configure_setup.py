@@ -75,7 +75,6 @@ def read_random_input_parameters(file):
 
 class setup(object):
     def __init__(self, file='./config.txt'):
-        print('initialising setup')
         if 'cwd' not in self.__dict__.keys():
             self.cwd = f"{os.getcwd()}/"
         self.debug = 0
@@ -127,7 +126,6 @@ class setup(object):
                     dst = self.modelAtomsPath + self.nlte_config[el]['modelAtom'].split('/')[-1]
                     os.symlink(self.nlte_config[el]['modelAtom'], dst )
 
-        print('reading input params')
         if 'inputParams_file' in self.__dict__:
             self.inputParams = read_random_input_parameters(self.inputParams_file)
         else:
@@ -159,14 +157,12 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
 
         "Temporary directories for NLTE files"
         for el in self.inputParams['elements']:
-            if self.inputParams['elements']['nlte']:
+            if self.inputParams['elements'][el]['nlte']:
                 path = self.cwd + f"/{el}_nlteDepFiles/"
                 mkdir(path)
                 self.inputParams['elements'][el].update({'dirNLTE':path})
 
-        print('preparing interpolators')
         self.prepInterpolation()
-        print('interpolating to each point')
         self.interpolateAllPoints()
         "Lose interpolator from the memory"
         self.interpolator = None
@@ -273,9 +269,9 @@ points are outside of the model atmosphere grid. No computations will be done")
                         tau = depart[0]
                         depart_coef = depart[1:]
                         departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
-                        abund = set.inputParams['elements'][el]['abund'][i]
+                        abund = self.inputParams['elements'][el]['abund'][i]
                         write_departures_forTS(departFile, tau, depart_coef, abund)
-            set.inputParams['elements'][el].update({
+            self.inputParams['elements'][el].update({
                             'departFile' : departFile
                                                     })
 

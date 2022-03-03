@@ -85,7 +85,6 @@ def compute_bsyn(set, ind, modelOpacFile, specResultFile, nlteInfoFile=None):
             f"'INDIVIDUAL ABUNDANCES:'   '{len(set.inputParams['elements'])}' \n"
     for el in set.inputParams['elements']:
         bsyn_config = bsyn_config + f" {set.inputParams['elements'][el]['Z']:.0f} {set.inputParams['elements'][el]['abund'][ind]:5.3f} \n"
-    print(bsyn_config)
 # TODO: spherical models???
 
     """ Run bsyn """
@@ -128,7 +127,6 @@ def parallel_worker(arg):
     mkdir(tempDir)
 
     for i in ind:
-        print(i)
         # create model atmosphere and run babsma on it
         atmos = model_atmosphere()
         if not isinstance(set.inputParams['modelAtmInterpol'][i], type(None)):
