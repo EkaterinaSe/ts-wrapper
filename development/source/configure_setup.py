@@ -268,42 +268,42 @@ points are outside of the model atmosphere grid. No computations will be done")
 
         for i in range(self.inputParams['count']):
             depart = None
-
-            point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
-                    for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
-            if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
-                abund = self.inputParams['elements'][el]['abund'][i]
-                point.append(abund)
-
-            fallsIntoHull = in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull'])
-            if not fallsIntoHull:
-                " Trying to find a closer abundance value "
+            if not isinstance(set.inputParams['modelAtmInterpol'][i], type(None)):
+                point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
+                        for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
                 if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
-                    shift = 0.0
-                    sign = [-1 if abund > np.mean(self.inputParams['elements'][el]['abund']) else 1][0]
+                    abund = self.inputParams['elements'][el]['abund'][i]
+                    point.append(abund)
 
-                    while not fallsIntoHull and shift <= 0.5: # dont walk futher than 0.5 dex from the requested abundance
-                        abund = abund + sign * 0.1
-                        point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
-                                for k in self.interpolator['NLTE'][el]['normCoord'] if k != 'abund' ]
-                        point.append(abund)
-                        fallsIntoHull = in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull'])
-                        shift += 0.1
-                        if self.debug: print(f"{el} at abund={abund:.2f} is outside of hull. trying abund={abund + sign * shift:.2f}")
-                    if fallsIntoHull:
-                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
+                fallsIntoHull = in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull'])
+                if not fallsIntoHull:
+                    " Trying to find a closer abundance value "
+                    if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
+                        shift = 0.0
+                        sign = [-1 if abund > np.mean(self.inputParams['elements'][el]['abund']) else 1][0]
 
-                else: print(f"WARNING: point outside of hull, but abundance is not a free parameter for {el}")
+                        while not fallsIntoHull and shift <= 0.5: # dont walk futher than 0.5 dex from the requested abundance
+                            abund = abund + sign * 0.1
+                            point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
+                                    for k in self.interpolator['NLTE'][el]['normCoord'] if k != 'abund' ]
+                            point.append(abund)
+                            fallsIntoHull = in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull'])
+                            shift += 0.1
+                            if self.debug: print(f"{el} at abund={abund:.2f} is outside of hull. trying abund={abund + sign * shift:.2f}")
+                        if fallsIntoHull:
+                            depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
 
-            else:
-                depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
+                    else: print(f"WARNING: point outside of hull, but abundance is not a free parameter for {el}")
 
-            if not isinstance(depart, type(None)):
-                tau = depart[0]
-                depart_coef = depart[1:]
-                departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
-                write_departures_forTS(departFile, tau, depart_coef, abund)
-                self.inputParams['elements'][el]['departFile'][i] = departFile
+                else:
+                    depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
+
+                if not isinstance(depart, type(None)):
+                    tau = depart[0]
+                    depart_coef = depart[1:]
+                    departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
+                    write_departures_forTS(departFile, tau, depart_coef, abund)
+                    self.inputParams['elements'][el]['departFile'][i] = departFile
 
     def createTSinputFlags(self):
         self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\
