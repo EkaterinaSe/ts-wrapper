@@ -215,10 +215,13 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 interpolCoords_el = interpolCoords.copy()
                 if min(nlteData['abund']) == max(nlteData['abund']):
                     pass
-                elif len(np.unique(nlteData['feh'])) == len(np.unique(nlteData['abund'])):
-                    pass
+                elif len(np.unique(nlteData['feh'])) == len(np.unique(nlteData['abund'])): # it is Fe
+                    coords = [c for c in interpolCoords_el if c!='feh']
+                    coords.append('abund')
+                    interpolCoords_el = coords
+                    if self.debug: print(f"for Fe grid interpolating over abundance rather than feh")
                 else:
-                    if debug: print(f"included interpolation over abundance of {el}")
+                    if self.debug: print(f"included interpolation over abundance of {el}")
                     interpolCoords_el.append('abund')
 
                 interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
@@ -259,21 +262,24 @@ points are outside of the model atmosphere grid. No computations will be done")
             if self.inputParams['elements'][el]['nlte']:
                 for i in range(self.inputParams['count']):
                     point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
-                            for k in self.interpolator['NLTE'][el]['normCoord'] ]
-                    abund = self.inputParams['elements'][el]['abund'][i]
+                            for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
+                    if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
+                        abund = self.inputParams['elements'][el]['abund'][i]
+                        point.append(abund)
                     if not in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull']):
-                        if self.debug:
-                           print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull... Tell me what to do with it...")
-
-                           " Try to find a closer abundance value "
-                           sign = [-1 if abund > np.mean(self.inputParams['elements'][el]['abund']) else 1]
-                           shift = 0.1
-                           while not in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull']) and shift <= 0.5:
-                               point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
-                                       for k in self.interpolator['NLTE'][el]['normCoord'] if k != 'abund' ]
-                               point.append(abund + sign * 0.1)
-                               shift += 0.1
-                               print(f"{el} at abund={abund} is outside of hull. trying abund={abund + sign * 0.1}")
+                        " Try to find a closer abundance value "
+                        if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
+                            shift = 0.0
+                            sign = [-1 if abund > np.mean(self.inputParams['elements'][el]['abund']) else 1][0]
+                            while not in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull']) and shift <= 0.5:
+                                abund = abund + sign * 0.1
+                                point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
+                                        for k in self.interpolator['NLTE'][el]['normCoord'] if k != 'abund' ]
+                                point.append(abund)
+                                shift += 0.1
+                                print(f"{el} at abund={abund:.2f} is outside of hull. trying abund={abund + sign * shift:.2f}")
+                            if self.debug: print(f"{abund} is inside the hull, interpolating")
+                        else: print(f"WARNING: point outside of hull, but abundance is not a free parameter for {el}")
 
                     else:
                         depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
