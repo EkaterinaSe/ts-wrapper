@@ -260,16 +260,27 @@ points are outside of the model atmosphere grid. No computations will be done")
                 for i in range(self.inputParams['count']):
                     point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
                             for k in self.interpolator['NLTE'][el]['normCoord'] ]
+                    abund = self.inputParams['elements'][el]['abund'][i]
                     if not in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull']):
                         if self.debug:
                            print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull... Tell me what to do with it...")
+
+                           " Try to find a closer abundance value "
+                           sign = [-1 if abund > np.mean(self.inputParams['elements'][el]['abund']) else 1]
+                           shift = 0.1
+                           while not in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull']) and shift <= 0.5:
+                               point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
+                                       for k in self.interpolator['NLTE'][el]['normCoord'] if k != 'abund' ]
+                               point.append(abund + sign * 0.1)
+                               shift += 0.1
+                               print(f"{el} at abund={abund} is outside of hull. trying abund={abund + sign * 0.1}")
+
                     else:
                         depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
 
                         tau = depart[0]
                         depart_coef = depart[1:]
                         departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
-                        abund = self.inputParams['elements'][el]['abund'][i]
                         write_departures_forTS(departFile, tau, depart_coef, abund)
             self.inputParams['elements'][el].update({
                             'departFile' : departFile
