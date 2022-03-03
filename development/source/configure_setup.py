@@ -159,9 +159,10 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
 
         "Temporary directories for NLTE files"
         for el in self.inputParams['elements']:
-            path = self.cwd + f"/{el}_nlteDepFiles/"
-            mkdir(path)
-            self.inputParams['elements'][el].update({'dirNLTE':path})
+            if self.inputParams['elements']['nlte']:
+                path = self.cwd + f"/{el}_nlteDepFiles/"
+                mkdir(path)
+                self.inputParams['elements'][el].update({'dirNLTE':path})
 
         print('preparing interpolators')
         self.prepInterpolation()
@@ -264,10 +265,8 @@ points are outside of the model atmosphere grid. No computations will be done")
                     point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
                             for k in self.interpolator['NLTE'][el]['normCoord'] ]
                     if not in_hull(np.array(point).T, self.interpolator['NLTE'][el]['hull']):
-                        depart = None
                         if self.debug:
                            print(f"Point {[self.inputParams[k][i] for k in self.interpolator['NLTE'][el]['normCoord']]} for element {el} at i = {i} is outside of hull... Tell me what to do with it...")
-                           # exit()
                     else:
                         depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
 
