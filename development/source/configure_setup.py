@@ -74,6 +74,7 @@ def read_random_input_parameters(file):
 
 class setup(object):
     def __init__(self, file='./config.txt'):
+        print('initialising setup')
         if 'cwd' not in self.__dict__.keys():
             self.cwd = f"{os.getcwd()}/"
         self.debug = 0
@@ -125,6 +126,7 @@ class setup(object):
                     dst = self.modelAtomsPath + self.nlte_config[el]['modelAtom'].split('/')[-1]
                     os.symlink(self.nlte_config[el]['modelAtom'], dst )
 
+        print('reading input params')
         if 'inputParams_file' in self.__dict__:
             self.inputParams = read_random_input_parameters(self.inputParams_file)
         else:
@@ -153,7 +155,9 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         if not os.path.isdir(self.spectraDir):
             os.mkdir(self.spectraDir)
 
+        print('preparing interpolators')
         self.prepInterpolation()
+        print('interpolating to each point')
         self.interpolateAllPoints()
         "Lose interpolator from the memory"
         self.interpolator = None

@@ -21,13 +21,17 @@ if __name__ == '__main__':
     else:
         print("Usage: ./run_ts.py ./configFile.txt")
         exit()
+    print('going to start the setup...')
     set = setup(file = conf_file)
+    print('setup done')
     if set.ncpu > set.inputParams['count']:
         set.ncpu = set.inputParams['count']
         print(f"Requested more CPUs than jobs. Will use {set.ncpu}")
 
     ind = np.arange(set.inputParams['count'])
+    print(ind)
     args = [ [set, ind[i::set.ncpu]] for i in range(set.ncpu)]
+    print(args)
 
     with Pool(processes=set.ncpu) as pool:
         pool.map(parallel_worker, args )

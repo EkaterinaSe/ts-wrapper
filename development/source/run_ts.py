@@ -128,11 +128,13 @@ def parallel_worker(arg):
     mkdir(tempDir)
 
     for i in ind:
+        print(i)
         # create model atmosphere and run babsma on it
         atmos = model_atmosphere()
         if not isinstance(set.inputParams['modelAtmInterpol'][i], type(None)):
             atmos.depth_scale, atmos.temp, atmos.ne, atmos.vturb = \
                 set.inputParams['modelAtmInterpol'][i]
+            set.inputParams['modelAtmInterpol'][i] = None
             atmos.temp, atmos.ne = 10**(atmos.temp), 10**(atmos.ne)
             atmos.depth_scale_type = 'TAU500'
             atmos.feh, atmos.logg = set.inputParams['feh'][i], set.inputParams['logg'][i]
@@ -147,6 +149,7 @@ def parallel_worker(arg):
             for el in set.inputParams['elements']:
                 if  set.inputParams['elements'][el]['nlte']:
                     depart = set.inputParams['elements'][el]['departInterpol'][i]
+                    set.inputParams['elements'][el]['departInterpol'][i] = None
                     abund = set.inputParams['elements'][el]['abund'][i]
 
                     departFile = f"{tempDir}/depart_{el}_{i}"
