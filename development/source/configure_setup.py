@@ -11,6 +11,7 @@ from read_nlte import read_fullNLTE_grid
 from atmos_package import model_atmosphere
 from run_ts import write_departures_forTS
 import cProfile
+import pstats
 
 def in_hull(p, hull):
    return hull.find_simplex(p) >= 0
@@ -174,15 +175,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             self.interpolator.update({'NLTE':{}})
             for el in self.inputParams['elements']:
                 if self.inputParams['elements'][el]['nlte']:
-                    profiler = cProfile.Profile()
-                    profiler.enable()
-
                     self.prepInterpolation_NLTE(el,interpolCoords, rescale = True, depthScale = atmDepthScale)
-                    
-                    profiler.disable()
-                    stats = pstats.Stats(profiler).sort_stats('cumulative')
-                    stats.print_stats()
-
                     self.interpolateAllPoints_NLTE(el)
                     self.interpolator['NLTE'][el] = None
 
@@ -222,6 +215,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         return atmDepthScale, interpolCoords
 
     def prepInterpolation_NLTE(self, el, interpolCoords, rescale = True, depthScale = None):
+        profiler = cProfile.Profile()
+        profiler.enable()
         "NLTE grids"
         if self.debug: print(f"reading grid {self.inputParams['elements'][el]['nlteGrid']}")
         " 0th element is tau, 1th-Nth are departures for N levels "
@@ -242,9 +237,9 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             if self.debug: print(f"included interpolation over abundance of {el}")
             interpolCoords_el.append('abund')
 
-        if self.debug: print("starting interpolation")
-        interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
-                                                valueKey='depart', dataLabel=f"NLTE grid {el}")
+        #if self.debug: print("starting interpolation")
+        #interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
+        #                                        valueKey='depart', dataLabel=f"NLTE grid {el}")
         if self.debug: print(f"Interpolated, creating hull")
         hull = Delaunay(np.array([ nlteData[k] /normalisedCoord[k] for k in interpolCoords_el ]).T)
         self.interpolator['NLTE'].update( { el: {
@@ -253,6 +248,9 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                                          } )
         nlteData = None
         if self.debug: print(f"{el} done")
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumulative')
+        stats.print_stats()
 
 
     def interpolateAllPoints_MA(self):
@@ -283,7 +281,8 @@ points are outside of the model atmosphere grid. No computations will be done")
         self.inputParams['elements'][el].update({
                         'departFile' : np.full(self.inputParams['count'], None)
                                                 })
-
+        profiler = cProfile.Profile()
+        profiler.enable()
         for i in range(self.inputParams['count']):
             depart = None
             if not isinstance(self.inputParams['modelAtmInterpol'][i], type(None)):
@@ -322,6 +321,10 @@ points are outside of the model atmosphere grid. No computations will be done")
                     departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
                     write_departures_forTS(departFile, tau, depart_coef, abund)
                     self.inputParams['elements'][el]['departFile'][i] = departFile
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumulative')
+        stats.print_stats()
+        exit(0)
 
     def createTSinputFlags(self):
         self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\
