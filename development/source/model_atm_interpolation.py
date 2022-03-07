@@ -118,14 +118,14 @@ def preInterpolationTests(data, interpol_coords, valueKey, dataLabel = 'default'
     for k in interpol_coords:
         if max(data[k]) == min(data[k]):
             print(f"Grid {dataLabel} is degenerate in parameter {k}")
-            exit()
+            return False
 
     " Check for repetitive points within the requested coordinates "
     test = [ data[k] for k in interpol_coords]
     if len(np.unique(test, axis=1)) != len(test):
         print(f"Grid {dataLabel} with coordinates {interpol_coords} \
 has repetitive points")
-        exit()
+        return False
 
     "Any coordinates correspond to the same value? e.g. [Fe/H] and A(Fe) "
     for k in interpol_coords:
@@ -135,20 +135,18 @@ has repetitive points")
                 if np.max(diff) < 5:
                     print(f"Grid {dataLabel} is only {np.max(diff)} % different \
 in parameters {k} and {k1}")
-                    exit()
+                    return False
 
     for k in interpol_coords:
         if np.isnan(data[k]).any():
                 print(f"Warning: found NaN in coordinate {k} in grid '{dataLabel}'")
     if np.isnan(data[valueKey]).any():
         print(f"Found NaN in {valueKey} array of {dataLabel} grid")
+    return True
 
 
 def NDinterpolateGrid(all_par, interpol_par, valueKey = 'structure', dataLabel='model_atm'):
 
-    preInterpolationTests(all_par, interpol_par, valueKey = valueKey,dataLabel=dataLabel)
-
-    print(f"normalising coordinates...")
     " Normalise the coordinates of the grid "
     points = []
     norm_coord = {}
@@ -159,7 +157,6 @@ def NDinterpolateGrid(all_par, interpol_par, valueKey = 'structure', dataLabel='
 
     "Create the function that interpolates model atmospheres structure"
     values = np.array(all_par[valueKey])
-    print(f"creating interpolator...")
     interp_f = LinearNDInterpolator(points, values)
 
     return interp_f, norm_coord
