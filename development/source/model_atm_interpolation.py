@@ -148,6 +148,7 @@ def NDinterpolateGrid(all_par, interpol_par, valueKey = 'structure', dataLabel='
 
     preInterpolationTests(all_par, interpol_par, valueKey = valueKey,dataLabel=dataLabel)
 
+    print(f"normalising coordinates...")
     " Normalise the coordinates of the grid "
     points = []
     norm_coord = {}
@@ -157,8 +158,8 @@ def NDinterpolateGrid(all_par, interpol_par, valueKey = 'structure', dataLabel='
     points = np.array(points).T
 
     "Create the function that interpolates model atmospheres structure"
-    values = all_par[valueKey]
-
+    values = np.array(all_par[valueKey])
+    print(f"creating interpolator...")
     interp_f = LinearNDInterpolator(points, values)
 
     return interp_f, norm_coord
