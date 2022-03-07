@@ -10,9 +10,11 @@ from model_atm_interpolation import get_all_ma_parameters, NDinterpolateGrid
 from read_nlte import read_fullNLTE_grid
 from atmos_package import model_atmosphere
 from run_ts import write_departures_forTS
+import cProfile
 
 def in_hull(p, hull):
    return hull.find_simplex(p) >= 0
+
 
 """
 Reading the config file and preparing for the computations
@@ -172,7 +174,15 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             self.interpolator.update({'NLTE':{}})
             for el in self.inputParams['elements']:
                 if self.inputParams['elements'][el]['nlte']:
+                    profiler = cProfile.Profile()
+                    profiler.enable()
+
                     self.prepInterpolation_NLTE(el,interpolCoords, rescale = True, depthScale = atmDepthScale)
+                    
+                    profiler.disable()
+                    stats = pstats.Stats(profiler).sort_stats('cumulative')
+                    stats.print_stats()
+
                     self.interpolateAllPoints_NLTE(el)
                     self.interpolator['NLTE'][el] = None
 
