@@ -203,9 +203,9 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                                         format = self.atmos_format, debug=self.debug)
 
         for i in range(self.inputParams['count']):
-            q = (c in modelAtmGrid[k] for k in interpolCoords )
+            q = [ modelAtmGrid[k] for k in interpolCoords ]
             print(f"q={q}")
-            qi = (c in self.inputParams[k][i] for k in interpolCoords )
+            qi = [self.inputParams[k][i] for k in interpolCoords ]
             v = modelAtmGrid['structure']
             value = tensorInterpN(q, v, qi, method='cubic')
             print(value)
