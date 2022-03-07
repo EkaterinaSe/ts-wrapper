@@ -237,9 +237,9 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             if self.debug: print(f"included interpolation over abundance of {el}")
             interpolCoords_el.append('abund')
 
-        #if self.debug: print("starting interpolation")
-        #interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
-        #                                        valueKey='depart', dataLabel=f"NLTE grid {el}")
+        if self.debug: print("starting interpolation")
+        interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
+                                                valueKey='depart', dataLabel=f"NLTE grid {el}")
         if self.debug: print(f"Interpolated, creating hull")
         hull = Delaunay(np.array([ nlteData[k] /normalisedCoord[k] for k in interpolCoords_el ]).T)
         self.interpolator['NLTE'].update( { el: {
