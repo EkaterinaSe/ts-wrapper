@@ -215,8 +215,6 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         return atmDepthScale, interpolCoords
 
     def prepInterpolation_NLTE(self, el, interpolCoords, rescale = True, depthScale = None):
-        profiler = cProfile.Profile()
-        profiler.enable()
         "NLTE grids"
         if self.debug: print(f"reading grid {self.inputParams['elements'][el]['nlteGrid']}")
         " 0th element is tau, 1th-Nth are departures for N levels "
@@ -226,6 +224,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         if self.debug: print('done reading')
         " interpolate over abundance? "
         interpolCoords_el = interpolCoords.copy()
+        linearInterpAbund = False
         if min(nlteData['abund']) == max(nlteData['abund']):
             pass
         elif len(np.unique(nlteData['feh'])) == len(np.unique(nlteData['abund'])): # it is Fe
@@ -236,21 +235,44 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         else:
             if self.debug: print(f"included interpolation over abundance of {el}")
             interpolCoords_el.append('abund')
+            linearInterpAbund = True
 
-        if self.debug: print("starting interpolation")
-        interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
+        if linearInterpAbund:
+            ind_abund = np.unique(nlteData['abund'] - nlteData['feh'])
+            print(f"found {len(ind_abund)} unique abundances: {ind_abund}")
+
+            subGrids = {'abund':[], 'nlteData': {} }
+            for ab in ind_abund:
+                subGrids['abund'].append(ab)
+                mask = np.where(nlteData['abund'] - nlteData['feh'] == ab)[0]
+                print(mask)
+                for k in nlteData:
+                    subGrids['nlteData'].update({ k : nlteData[k][mask] })
+                print(subGrids)
+
+        if linearInterpAbund:
+            self.interpolator['NLTE'].update({ el : {'linearInterpAbund' : True, 'abund': [], 'interpFunction':[], 'normCoord':[]} } )
+            for i in range(len( subGrids['abund'])):
+                ab = subGrids['abund'][i]
+                if self.debug: print(f"starting interpolation at A({el})={ab}")
+                interpFunction, normalisedCoord  = NDinterpolateGrid(subGrids['nlteData'][i], interpolCoords_el,\
+                                                    valueKey='depart', dataLabel=f"NLTE grid {el}")
+                self.interpolator['NLTE'][el]['abund'].append(ab)
+                self.interpolator['NLTE'][el]['interpFunction'].append(interpFunction)
+                self.interpolator['NLTE'][el]['normCoord'].append(normalisedCoord)
+                if self.debug: print(f"Interpolated, next")
+        else:
+            interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
                                                 valueKey='depart', dataLabel=f"NLTE grid {el}")
-        if self.debug: print(f"Interpolated, creating hull")
-        hull = Delaunay(np.array([ nlteData[k] /normalisedCoord[k] for k in interpolCoords_el ]).T)
-        self.interpolator['NLTE'].update( { el: {
-                                            'interpFunction' : interpFunction, \
-                                             'normCoord' : normalisedCoord, 'hull':hull }
-                                         } )
+        #hull = Delaunay(np.array([ nlteData[k] /normalisedCoord[k] for k in interpolCoords_el ]).T)
+            self.interpolator['NLTE'].update( { el: {
+                                                 'linearInterpAbund' : False, \
+                                                 'interpFunction' : interpFunction, \
+                                                 'normCoord' : normalisedCoord, 'hull':hull }
+                                             } )
         nlteData = None
         if self.debug: print(f"{el} done")
-        profiler.disable()
-        stats = pstats.Stats(profiler).sort_stats('cumulative')
-        stats.print_stats()
+        exit()
 
 
     def interpolateAllPoints_MA(self):
