@@ -6,7 +6,7 @@ import datetime
 import glob
 from scipy.spatial import Delaunay
 # local
-from model_atm_interpolation import get_all_ma_parameters, NDinterpolateGrid
+from model_atm_interpolation import get_all_ma_parameters, NDinterpolateGrid, tensorInterpN
 from read_nlte import read_fullNLTE_grid
 from atmos_package import model_atmosphere
 from run_ts import write_departures_forTS
@@ -168,7 +168,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 self.inputParams['elements'][el].update({'dirNLTE':path})
 
         atmDepthScale, interpolCoords = self.prepInterpolation_MA()
-        self.interpolateAllPoints_MA()
+        # self.interpolateAllPoints_MA()
+        exit()
         self.interpolator['modelAtm'] = None
         # have to work with one nlte grid at a time to avoid memory overflow
         if self.nlte:
@@ -200,19 +201,31 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         if self.debug: print("preparing model atmosphere interpolator...")
         modelAtmGrid, atmDepthScale = get_all_ma_parameters(self.atmos_path, \
                                         format = self.atmos_format, debug=self.debug)
-        interpFunction, normalisedCoord = NDinterpolateGrid(modelAtmGrid, interpolCoords, \
-                                        valueKey='structure', dataLabel = 'model atmosphere grid' )
-        """
-        Create hull object to test whether which of the requested points
-        are within the original grid
-        Interpolation outside of hull returns NaNs, therefore skip those points
-        """
-        hull = Delaunay(np.array([ modelAtmGrid[k] / normalisedCoord[k] for k in interpolCoords ]).T)
 
-        self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
-                                        'normCoord' : normalisedCoord, \
-                                        'hull': hull}
-        return atmDepthScale, interpolCoords
+        for i in range(self.inputParams['count']):
+            q = (c in modelAtmGrid[k] for k in interpolCoords )
+            print(f"q={q}")
+            qi = (c in self.inputParams[k][i] for k in interpolCoords )
+            v = modelAtmGrid['structure']
+            value = tensorInterpN(q, v, qi, method='cubic')
+            print(value)
+
+        # interpFunction, normalisedCoord = NDinterpolateGrid(modelAtmGrid, interpolCoords, \
+                                        # valueKey='structure', dataLabel = 'model atmosphere grid' )
+
+
+
+        # """
+        # Create hull object to test whether which of the requested points
+        # are within the original grid
+        # Interpolation outside of hull returns NaNs, therefore skip those points
+        # """
+        # hull = Delaunay(np.array([ modelAtmGrid[k] / normalisedCoord[k] for k in interpolCoords ]).T)
+        #
+        # self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
+        #                                 'normCoord' : normalisedCoord, \
+        #                                 'hull': hull}
+        # return atmDepthScale, interpolCoords
 
     def prepInterpolation_NLTE(self, el, interpolCoords, rescale = True, depthScale = None):
         profiler = cProfile.Profile()
@@ -267,6 +280,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         for i in range(self.inputParams['count']):
             point = [ self.inputParams[k][i] / self.interpolator['modelAtm']['normCoord'][k] \
                     for k in self.interpolator['modelAtm']['normCoord'] ]
+
+
             if not in_hull(np.array(point).T, self.interpolator['modelAtm']['hull']):
                 countOutsideHull += 1
             else:

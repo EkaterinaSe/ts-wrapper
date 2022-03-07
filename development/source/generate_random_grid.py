@@ -29,7 +29,6 @@ if __name__ == '__main__':
         print(f"Requested more CPUs than jobs. \
 Will use {set.nnode} node and {set.ncpu} CPUs")
 
-    
 
     ind = np.arange(set.inputParams['count'])
     args = [ [set, ind[i::set.ncpu]] for i in range(set.ncpu)]

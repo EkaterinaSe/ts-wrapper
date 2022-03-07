@@ -164,6 +164,14 @@ def NDinterpolateGrid(all_par, interpol_par, valueKey = 'structure', dataLabel='
 
     return interp_f, norm_coord
 
+def tensorInterpN(q, v, qi, method='cubic'):
+    """Interpolation on 3-D. x, y, xi, yi should be 1-D
+    and z.shape == (len(x), len(y), len(z))"""
+    q = (x, y, z)
+    qi = (xi, yi, zi)
+    for j in range(len(q, axis=0)):
+        v = interp1d(q[j], v, axis=j, kind=method)(qi[j])
+    return v
 
 if __name__ == '__main__':
     exit(0)
