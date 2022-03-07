@@ -125,7 +125,7 @@ def parallel_worker(arg):
     set, ind = arg
     tempDir = f"{set.cwd}/{min(ind)}_{max(ind)}/"
     mkdir(tempDir)
-
+    print(f"Working on input parameters {ind}...")
     for i in ind:
         # create model atmosphere and run babsma on it
         atmos = model_atmosphere()

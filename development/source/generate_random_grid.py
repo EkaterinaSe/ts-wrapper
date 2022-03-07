@@ -22,13 +22,17 @@ if __name__ == '__main__':
         print("Usage: ./run_ts.py ./configFile.txt")
         exit()
     set = setup(file = conf_file)
-    if set.ncpu > set.inputParams['count']:
+
+    if set.nnode * set.ncpu > set.inputParams['count']:
+        set.nnode = 1
         set.ncpu = set.inputParams['count']
-        print(f"Requested more CPUs than jobs. Will use {set.ncpu}")
+        print(f"Requested more CPUs than jobs. \
+Will use {set.nnode} node and {set.ncpu} CPUs")
+
+    
 
     ind = np.arange(set.inputParams['count'])
     args = [ [set, ind[i::set.ncpu]] for i in range(set.ncpu)]
 
     with Pool(processes=set.ncpu) as pool:
         pool.map(parallel_worker, args )
-

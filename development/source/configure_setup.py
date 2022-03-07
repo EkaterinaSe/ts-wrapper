@@ -79,6 +79,8 @@ class setup(object):
             self.cwd = f"{os.getcwd()}/"
         self.debug = 0
         self.ncpu  = 1
+        self.nnode  = 1
+
 
         "Read all the keys from the config file"
         for line in open(file, 'r').readlines():
@@ -241,7 +243,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                                          } )
         nlteData = None
         if self.debug: print(f"{el} done")
-        
+
 
     def interpolateAllPoints_MA(self):
         """
