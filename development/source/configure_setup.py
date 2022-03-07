@@ -162,7 +162,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 mkdir(path)
                 self.inputParams['elements'][el].update({'dirNLTE':path})
 
-        self.prepInterpolation_MA()
+        atmDepthScale, interpolCoords = self.prepInterpolation_MA()
         self.interpolateAllPoints_MA()
         self.interpolator['modelAtm'] = None
         # have to work with one nlte grid at a time to avoid memory overflow
@@ -170,7 +170,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             self.interpolator.update({'NLTE':{}})
             for el in self.inputParams['elements']:
                 if self.inputParams['elements'][el]['nlte']:
-                    self.prepInterpolation_NLTE(el)
+                    self.prepInterpolation_NLTE(el,interpolCoords, rescale = True, depthScale = atmDepthScale)
                     self.interpolateAllPoints_NLTE(el)
                     self.interpolator['NLTE'][el] = None
 
@@ -207,14 +207,16 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
                                         'normCoord' : normalisedCoord, \
                                         'hull': hull}
+        return atmDepthScale, interpolCoords
 
-    def prepInterpolation_NLTE(self, el):
+    def prepInterpolation_NLTE(self, el, interpolCoords, rescale = True, depthScale = None):
         "NLTE grids"
-        if self.debug: print(f"preparing interpolator for {el}")
+        if self.debug: print(f"reading grid {self.inputParams['elements'][el]['nlteGrid']}")
         " 0th element is tau, 1th-Nth are departures for N levels "
         nlteData = read_fullNLTE_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                     self.inputParams['elements'][el]['nlteAux'], \
-                                    rescale=True, depthScale = atmDepthScale )
+                                    rescale=True, depthScale = depthScale )
+        if self.debug: print('done reading')
         " interpolate over abundance? "
         interpolCoords_el = interpolCoords.copy()
         if min(nlteData['abund']) == max(nlteData['abund']):
@@ -228,14 +230,18 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             if self.debug: print(f"included interpolation over abundance of {el}")
             interpolCoords_el.append('abund')
 
+        if self.debug: print("starting interpolation")
         interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
                                                 valueKey='depart', dataLabel=f"NLTE grid {el}")
+        if self.debug: print(f"Interpolated, creating hull")
         hull = Delaunay(np.array([ nlteData[k] /normalisedCoord[k] for k in interpolCoords_el ]).T)
         self.interpolator['NLTE'].update( { el: {
                                             'interpFunction' : interpFunction, \
                                              'normCoord' : normalisedCoord, 'hull':hull }
                                          } )
         nlteData = None
+        if self.debug: print(f"{el} done")
+        
 
     def interpolateAllPoints_MA(self):
         """
@@ -268,7 +274,7 @@ points are outside of the model atmosphere grid. No computations will be done")
 
         for i in range(self.inputParams['count']):
             depart = None
-            if not isinstance(set.inputParams['modelAtmInterpol'][i], type(None)):
+            if not isinstance(self.inputParams['modelAtmInterpol'][i], type(None)):
                 point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
                         for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
                 if 'abund' in self.interpolator['NLTE'][el]['normCoord']:

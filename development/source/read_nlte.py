@@ -2,6 +2,7 @@ import numpy as np
 import os
 from scipy.interpolate import interp1d
 from sys import exit
+import pickle
 
 def grid_to_ts(grid_file, aux_file, atmos, abund):
 
@@ -111,19 +112,23 @@ def read_fullNLTE_grid(bin_file, aux_file, rescale=False, depthScale=None):
         data.update( { k : aux[k] } )
 
     # read and save each record from the binary file
-    data.update( { 'depart' : [] } )
-    for p in data['pointer']:
-        #print(f"{100*p/data['pointer'][-1]:.2f}")
+    p = data['pointer'][0]
+    ndep, nk, depart, tau = read_binary_grid(bin_file, pointer=p)
+    if rescale:
+        departShape = ( len(data['pointer']), nk+1, len(depthScale))
+    else:
+        departShape = ( len(data['pointer']), nk+1, ndep)
+    data.update( { 'depart' : np.full(departShape, np.nan) } )
+    for i in range(len( data['pointer'])):
+        p = data['pointer'][i]
         ndep, nk, depart, tau = read_binary_grid(bin_file, pointer=p)
         if rescale:
-            depart_new = np.full(  shape=(len(depthScale), nk), fill_value=np.nan)
+            depart_new = np.full(  shape=(len(depthScale), nk), fill_value=1)
             f_int = interp1d(tau, depart, fill_value='extrapolate')
-            depart_new = f_int(depthScale)
-        data['depart'].append( np.vstack([depthScale, depart_new]) )
+            depart = f_int(depthScale)
+            tau = depthScale
+        data['depart'][i] =  np.vstack([tau, depart]) 
 
-
-
-    data['depart'] = np.array( data['depart'] )
     return data
 
     # TODO: make sure that all departure coefficient are at the same tau scale
