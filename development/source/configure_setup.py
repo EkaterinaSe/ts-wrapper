@@ -176,7 +176,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             self.interpolator.update({'NLTE':{}})
             for el in self.inputParams['elements']:
                 if self.inputParams['elements'][el]['nlte']:
-                    self.prepInterpolation_NLTE(el,interpolCoords, rescale = False, depthScale = atmDepthScale)
+                    self.prepInterpolation_NLTE(el,interpolCoords, rescale = True, depthScale = atmDepthScale)
                     self.interpolateAllPoints_NLTE(el)
                     del self.interpolator['NLTE'][el] 
 
