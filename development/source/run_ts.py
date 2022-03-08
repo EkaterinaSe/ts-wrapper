@@ -99,7 +99,7 @@ def compute_bsyn(set, ind, modelOpacFile, specResultFile, nlteInfoFile=None):
     if set.debug:
         print(F"bsyn: {time.time()-time0} seconds")
 
-def create_NlteInfoFile(filePath, set):
+def create_NlteInfoFile(filePath, set, i):
     with open(filePath, 'w') as nlte_info_file:
         nlte_info_file.write('# created on \n')
         nlte_info_file.write('# path for model atom files ! this comment line has to be here !\n')
@@ -111,12 +111,15 @@ def create_NlteInfoFile(filePath, set):
         nlte_info_file.write('# atomic (non)LTE setup \n')
         for el in set.inputParams['elements']:
             Z = set.inputParams['elements'][el]['Z']
-            depart_file = set.inputParams['elements'][el]['departFile']
-            if set.inputParams['elements'][el]['nlte'] and  not isinstance(depart_file, type(None)):
-                model_atom_id = set.inputParams['elements'][el]['modelAtom'].split('/')[-1]
-                nlte_info_file.write(F"{Z}  '{el}'  'nlte' '{model_atom_id}'  '{depart_file}' 'ascii' \n")
+            if set.inputParams['elements'][el]['nlte'] :
+                depart_file = set.inputParams['elements'][el]['departFile'][i]
+                if not isinstance(depart_file, type(None)):
+                    model_atom_id = set.inputParams['elements'][el]['modelAtom'].split('/')[-1]
+                    nlte_info_file.write(F"{Z}  '{el}'  'nlte' '{model_atom_id}'  '{depart_file}' 'ascii' \n")
+                else:  return False
             else:
                 nlte_info_file.write(F"{Z}  '{el}'  'lte' ' '  ' ' 'ascii' \n")
+        return True
 
 def parallel_worker(arg):
     """
@@ -154,10 +157,14 @@ def parallel_worker(arg):
 
             if set.nlte:
                 nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
-                create_NlteInfoFile(nlteInfoFile, set)
-            else: nlteInfoFile = None
-            compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
-            shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
+                departFilesExist = create_NlteInfoFile(nlteInfoFile, set, i)
+                if departFilesExist:
+                    compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
+                else: print(f"nlte interpolation failed for one of the elemetns, skipping this point, no spectrum will be computed")
+            else: 
+                compute_bsyn(set, i, modelOpacFile, specResultFile, None)
+            if os.path.isfile(specResultFile):
+                shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
 
             os.remove(atmos.path)
             os.remove(modelOpacFile)
