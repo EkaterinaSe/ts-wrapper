@@ -331,13 +331,13 @@ points are outside of the model atmosphere grid. No computations will be done")
                     for j in range(len(self.interpolator['NLTE'][el]['abund'])):  
                         point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][j][k] \
                                  for k in self.interpolator['NLTE'][el]['normCoord'][j] if k !='abund']
-                        ab = self.interpolator['NLTE'][el]['abund'][j]
+                        abund = self.interpolator['NLTE'][el]['abund'][j]
                         v = self.interpolator['NLTE'][el]['interpFunction'][j](point)[0]
-                        x.append(ab)
+                        x.append(abund)
                         y.append(v)
                     x = np.array(x)
                     y = np.array(y)
-                    depart = interp1d(x, y, fill_value='extrapolate', axis=0)(ab)
+                    depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
                 else:
                     point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
                             for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
@@ -352,7 +352,6 @@ points are outside of the model atmosphere grid. No computations will be done")
                     departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
                     write_departures_forTS(departFile, tau, depart_coef, abund)
                     self.inputParams['elements'][el]['departFile'][i] = departFile
-        exit(0)
 
     def createTSinputFlags(self):
         self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\
