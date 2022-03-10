@@ -120,7 +120,10 @@ class setup(object):
                 l = l.replace('[','').replace(']','').replace("'","")
                 el, files = l.split(':')[0].strip(), l.split(':')[-1].split(',')
                 files = [ f.strip() for f in files ]
+                if 'nlte_grids_path' in self.__dict__:
+                    files = [ f"{self.nlte_grids_path.strip()}/{f}" for f in files]
                 files = [ f.replace('./', self.cwd) if f.startswith('./') else f  for f in files]
+                print(files) 
                 d.update({el.capitalize() : {'nlteGrid' : files[0], 'nlteAux' : files[1], 'modelAtom' : files[2] }})
             self.nlte_config = d
 
@@ -349,7 +352,7 @@ points are outside of the model atmosphere grid. No computations will be done")
                             for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
                     if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
                         point.append(abund)
-                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]     
+                    depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]     
 
                 if not np.isnan(depart).all():
                     tau = depart[0]
