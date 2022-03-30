@@ -8,7 +8,7 @@ from scipy.spatial import Delaunay
 from scipy.interpolate import interp1d
 # local
 from model_atm_interpolation import get_all_ma_parameters, NDinterpolateGrid,preInterpolationTests
-from read_nlte import read_fullNLTE_grid
+from read_nlte import read_fullNLTE_grid, find_distance_to_point
 from atmos_package import model_atmosphere
 from run_ts import write_departures_forTS
 import cProfile
@@ -376,17 +376,21 @@ points are outside of the model atmosphere grid. No computations will be done")
                             point.append(abund)
                         depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
 
-                    if not np.isnan(depart).all():
-                        tau = depart[0]
-                        depart_coef = depart[1:]
-                        write_departures_forTS(departFile, tau, depart_coef, abund)
-                        self.inputParams['elements'][el]['departFile'][i] = departFile
-                    else:
+
+                    if np.isnan(depart).all():
                         if self.debug:
                             print(f"depart is NaN at A({el}) = {abund} [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
                             print(f"attempting to find the closest point the in the grid of departure coefficients")
                             exit()
+                        # find_distance_to_point(point, grid, coordinates)
                         # self.interpolator['NLTE'][el]['normCoord'][j]
+
+                        # tau = depart[0]
+                        # depart_coef = depart[1:]
+                        # write_departures_forTS(departFile, tau, depart_coef, abund)
+                        # self.inputParams['elements'][el]['departFile'][i] = departFile
+                        #
+
 
 
     def createTSinputFlags(self):
