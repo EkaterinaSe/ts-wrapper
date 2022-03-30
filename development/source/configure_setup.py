@@ -173,15 +173,16 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         self.interpolator = {}
         atmDepthScale, interpolCoords = self.prepInterpolation_MA()
         self.interpolateAllPoints_MA()
-        self.interpolator['modelAtm'] = None
+        del self.interpolator['modelAtm']
+
         # have to work with one nlte grid at a time to avoid memory overflow
-        if self.nlte:
-            self.interpolator.update({'NLTE':{}})
-            for el in self.inputParams['elements']:
-                if self.inputParams['elements'][el]['nlte']:
-                    self.prepInterpolation_NLTE(el,interpolCoords, rescale = True, depthScale = atmDepthScale)
-                    self.interpolateAllPoints_NLTE(el)
-                    del self.interpolator['NLTE'][el]
+        self.interpolator.update({'NLTE':{}})
+        for el in self.inputParams['elements']:
+            if self.inputParams['elements'][el]['nlte']:
+                self.prepInterpolation_NLTE(el,interpolCoords, rescale = True, depthScale = atmDepthScale)
+                self.interpolateAllPoints_NLTE(el)
+                del self.interpolator['NLTE'][el]
+        del self.interpolator['NLTE']
 
         self.createTSinputFlags()
 
@@ -230,29 +231,22 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         nlteData = read_fullNLTE_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                     self.inputParams['elements'][el]['nlteAux'], \
                                     rescale=rescale, depthScale = depthScale )
-        mask = np.where(np.isnan(nlteData['depart']))
-        print(mask)
-        nlteData['depart'][mask] = 1
 
         " interpolate over abundance? "
-        if min(nlteData['abund']) == max(nlteData['abund']):
-            linearInterpAbund = False
-            interpolCoords_el = interpolCoords.copy()
-        elif len(np.unique(nlteData['feh'])) == len(np.unique(nlteData['abund'])): # it is Fe
+        "always"
+
+        interpolCoords_el = interpolCoords.copy()
+        isFe = False
+        if len(np.unique(nlteData['feh'])) == len(np.unique(nlteData['abund'])): # it is probably Fe
             if el.lower() == 'fe':
+                isFe = True
                 interpolCoords_el = [c for c in interpolCoords if c!='feh']
-                linearInterpAbund = True
                 if self.debug: print(f"for Fe grid interpolating over abundance rather than [Fe/H]")
             else:
-                print(f"abundance is not a unique parameter, but element is not Fe (for Fe abundance == [Fe/H] is OK)")
+                print(f"abundance is not a unique parameter for {el}, \
+but element is not Fe (for Fe abundance == [Fe/H] is acceptable)")
                 exit()
-        else:
-            if self.debug: print(f"included interpolation over abundance of {el}")
-            linearInterpAbund = True
-            interpolCoords_el = interpolCoords.copy()
 
-
-        if linearInterpAbund:
             if el.lower() == 'fe':
                 ind_abund = np.unique(nlteData['abund'])
             else:
@@ -339,57 +333,49 @@ points are outside of the model atmosphere grid. No computations will be done")
         self.inputParams['elements'][el].update({
                         'departFile' : np.full(self.inputParams['count'], None)
                                                 })
-        #print(f"accessing files for {el}")
-        #for i in range(self.inputParams['count']):
-        #    departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
-        #    if os.path.isfile(departFile):
-        #        self.inputParams['elements'][el]['departFile'][i] = departFile
-        #return
 
         for i in range(self.inputParams['count']):
-            if not isinstance(self.inputParams['modelAtmInterpol'][i], type(None)):
-                departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
-                if not os.path.isfile(departFile):
-                    abund = self.inputParams['elements'][el]['abund'][i]
+            if not os.path.isfile(departFile):
+                abund = self.inputParams['elements'][el]['abund'][i]
 
-                    if self.interpolator['NLTE'][el]['linearInterpAbund']:
-                        x, y = [], []
-                        for j in range(len(self.interpolator['NLTE'][el]['abund'])):
-                            point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][j][k] \
-                                     for k in self.interpolator['NLTE'][el]['normCoord'][j] if k !='abund']
-                            ab = self.interpolator['NLTE'][el]['abund'][j]
-                            v = self.interpolator['NLTE'][el]['interpFunction'][j](point)[0]
-                            if not np.isnan(v).all():
-                                x.append(ab)
-                                y.append(v)
-                        x = np.array(x)
-                        y = np.array(y)
-                        if len(x) > 2 and len(y) > 2:
-                            depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
-                            if self.debug:
-                                print(f"not enough points to interpolate over abundance at i = {i}")
-                            depart = [np.nan]
-                    else:
-                        point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
-                                for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
-                        if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
-                            point.append(abund)
-                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
-
-
-                    if np.isnan(depart).all():
+                if self.interpolator['NLTE'][el]['linearInterpAbund']:
+                    x, y = [], []
+                    for j in range(len(self.interpolator['NLTE'][el]['abund'])):
+                        point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][j][k] \
+                                 for k in self.interpolator['NLTE'][el]['normCoord'][j] if k !='abund']
+                        ab = self.interpolator['NLTE'][el]['abund'][j]
+                        v = self.interpolator['NLTE'][el]['interpFunction'][j](point)[0]
+                        if not np.isnan(v).all():
+                            x.append(ab)
+                            y.append(v)
+                    x = np.array(x)
+                    y = np.array(y)
+                    if len(x) > 2 and len(y) > 2:
+                        depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
                         if self.debug:
-                            print(f"depart is NaN at A({el}) = {abund} [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
-                            print(f"attempting to find the closest point the in the grid of departure coefficients")
-                            exit()
-                        # find_distance_to_point(point, grid, coordinates)
-                        # self.interpolator['NLTE'][el]['normCoord'][j]
+                            print(f"not enough points to interpolate over abundance at i = {i}")
+                        depart = [np.nan]
+                else:
+                    point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
+                            for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
+                    if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
+                        point.append(abund)
+                    depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
 
-                        # tau = depart[0]
-                        # depart_coef = depart[1:]
-                        # write_departures_forTS(departFile, tau, depart_coef, abund)
-                        # self.inputParams['elements'][el]['departFile'][i] = departFile
-                        #
+
+                if np.isnan(depart).all():
+                    if self.debug:
+                        print(f"depart is NaN at A({el}) = {abund} [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
+                        print(f"attempting to find the closest point the in the grid of departure coefficients")
+                        exit()
+                    # find_distance_to_point(point, grid, coordinates)
+                    # self.interpolator['NLTE'][el]['normCoord'][j]
+
+                    # tau = depart[0]
+                    # depart_coef = depart[1:]
+                    # write_departures_forTS(departFile, tau, depart_coef, abund)
+                    # self.inputParams['elements'][el]['departFile'][i] = departFile
+                    #
 
 
 
