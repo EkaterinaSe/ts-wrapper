@@ -123,7 +123,7 @@ class setup(object):
                 if 'nlte_grids_path' in self.__dict__:
                     files = [ f"{self.nlte_grids_path.strip()}/{f}" for f in files]
                 files = [ f.replace('./', self.cwd) if f.startswith('./') else f  for f in files]
-                print(files) 
+                print(files)
                 d.update({el.capitalize() : {'nlteGrid' : files[0], 'nlteAux' : files[1], 'modelAtom' : files[2] }})
             self.nlte_config = d
 
@@ -181,7 +181,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 if self.inputParams['elements'][el]['nlte']:
                     self.prepInterpolation_NLTE(el,interpolCoords, rescale = True, depthScale = atmDepthScale)
                     self.interpolateAllPoints_NLTE(el)
-                    del self.interpolator['NLTE'][el] 
+                    del self.interpolator['NLTE'][el]
 
         self.createTSinputFlags()
 
@@ -260,35 +260,25 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             self.interpolator['NLTE'].update({ el : {'linearInterpAbund' : True, \
             'abund': [], 'interpFunction':[], 'normCoord':[]  }} )
 
-            subGrids = {'abund':np.zeros(len(ind_abund)), 'nlteData':np.empty(len(ind_abund), dtype=dict)} 
+            subGrids = {'abund':np.zeros(len(ind_abund)), 'nlteData':np.empty(len(ind_abund), dtype=dict)}
 
             for i in range(len(ind_abund)):
-                ab = ind_abund[i]            
-                if self.debug: 
+                ab = ind_abund[i]
+                if self.debug:
                     print(f"starting interpolation at A({el})={ab}")
 
-<<<<<<< HEAD
-            subGrids = {'abund':[], 'nlteData': [] }
-            for ab in ind_abund:
-
-                subGrids['abund'].append(ab)
-=======
->>>>>>> 6f4961192f4cfe562ec21ef96d25504f9a55c48d
                 if el.lower() == 'fe':
                     mask = np.where( np.abs(nlteData['abund'] - ab) < 0.001)[0]
                 else:
                     mask = np.where( np.abs((nlteData['abund'] - nlteData['feh']) - ab) < 0.001)[0]
                 subGrids['abund'][i] = ab
-                subGrids['nlteData'][i] = {k: nlteData[k][mask] for k in nlteData} 
+                subGrids['nlteData'][i] = {k: nlteData[k][mask] for k in nlteData}
             del nlteData
 
             for i in range(len(subGrids['abund'])):
                 ab = subGrids['abund'][i]
-<<<<<<< HEAD
                 if self.debug:
                     print(f"starting interpolation at A({el})={ab}")
-=======
->>>>>>> 6f4961192f4cfe562ec21ef96d25504f9a55c48d
                 passed = preInterpolationTests(subGrids['nlteData'][i], interpolCoords_el, valueKey='depart', dataLabel=f"NLTE grid {el}")
                 if passed:
                     interpFunction, normalisedCoord  = NDinterpolateGrid(subGrids['nlteData'][i], interpolCoords_el,\
@@ -353,35 +343,13 @@ points are outside of the model atmosphere grid. No computations will be done")
 
         for i in range(self.inputParams['count']):
             if not isinstance(self.inputParams['modelAtmInterpol'][i], type(None)):
-<<<<<<< HEAD
-
-                if self.interpolator['NLTE'][el]['linearInterpAbund']:
-                    x, y = [], []
-                    for j in range(len(self.interpolator['NLTE'][el]['abund'])):
-                        point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][j][k] \
-                                 for k in self.interpolator['NLTE'][el]['normCoord'][j] if k !='abund']
-                        ab = self.interpolator['NLTE'][el]['abund'][j]
-                        v = self.interpolator['NLTE'][el]['interpFunction'][j](point)[0]
-                        x.append(ab)
-                        y.append(v)
-                    x = np.array(x)
-                    y = np.array(y)
-                    depart = interp1d(x, y, fill_value='extrapolate', axis=0)(ab)
-                else:
-                    point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
-                            for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
-                    if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
-                        abund = self.inputParams['elements'][el]['abund'][i]
-                        point.append(abund)
-                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
-=======
                 departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
                 if not os.path.isfile(departFile):
                     abund = self.inputParams['elements'][el]['abund'][i]
 
                     if self.interpolator['NLTE'][el]['linearInterpAbund']:
                         x, y = [], []
-                        for j in range(len(self.interpolator['NLTE'][el]['abund'])):  
+                        for j in range(len(self.interpolator['NLTE'][el]['abund'])):
                             point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][j][k] \
                                      for k in self.interpolator['NLTE'][el]['normCoord'][j] if k !='abund']
                             ab = self.interpolator['NLTE'][el]['abund'][j]
@@ -405,8 +373,7 @@ points are outside of the model atmosphere grid. No computations will be done")
                                 for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
                         if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
                             point.append(abund)
-                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]     
->>>>>>> 6f4961192f4cfe562ec21ef96d25504f9a55c48d
+                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
 
                     if not np.isnan(depart).all():
                         tau = depart[0]

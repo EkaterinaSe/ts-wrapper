@@ -3,6 +3,7 @@ import os
 from scipy.interpolate import interp1d
 from sys import exit
 import pickle
+import glob
 
 def grid_to_ts(grid_file, aux_file, atmos, abund):
 
@@ -127,9 +128,27 @@ def read_fullNLTE_grid(bin_file, aux_file, rescale=False, depthScale=None):
             f_int = interp1d(tau, depart, fill_value='extrapolate')
             depart = f_int(depthScale)
             tau = depthScale
-        data['depart'][i] =  np.vstack([tau, depart]) 
+        data['depart'][i] =  np.vstack([tau, depart])
 
     return data
 
     # TODO: make sure that all departure coefficient are at the same tau scale
     # also, same as model atmospheres... i guess?
+def get_parametes_from_NLTE_grids(path):
+    auxFiles = glob.glob(path + '/aux*.txt')
+    print(f"Found the following auxiliarly files: {'  '.join(f.split('/')[-1] for f in auxFiles)}")
+
+    for aux_file in auxFiles:
+        element = aux_file.split('_')[2].strip().capitalize()
+        data = np.genfromtxt(aux_file, \
+        dtype = [('atmos_id', 'str'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
+                 ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
+                 ('pointer', 'i8')])
+        if element.lower() != 'fe':
+            abund_range = [min(data['abund'] - data['feh']), max(data['abund'] - data['feh'])]
+        else:
+            abund_range = [min(data['abund']), max(data['abund'])]
+
+        print(f"{element}")
+        print(50*'-')
+        print(f"A({element}) = {abund_range[0]} -- {abund_range[1]}")
