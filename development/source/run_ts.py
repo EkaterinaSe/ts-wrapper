@@ -55,7 +55,7 @@ def compute_babsma(set, atmos):
 
     return modelOpacFile
 
-def compute_bsyn(set, ind, modelOpacFile, specResultFile, nlteInfoFile=None):
+def compute_bsyn(set, ind, atmos, modelOpacFile, specResultFile, nlteInfoFile=None):
     """
     input:
     atmos (object):     object of model_atmosphere class, init before passing to this function
@@ -72,7 +72,14 @@ def compute_bsyn(set, ind, modelOpacFile, specResultFile, nlteInfoFile=None):
 'HELIUM     :'    '0.00'
 'NFILES   :' '{set.ts_input['NFILES']}'
 {set.ts_input['LINELIST']}
-'SPHERICAL:'  'F'
+"""
+    if atmos.spherical: 
+        bsyn_config = bsyn_config + f"""\
+'SPHERICAL:'  '.true.'
+"""
+    else:
+        bsyn_config = bsyn_config + f"""\
+'SPHERICAL:'  '.false.'
   30
   300.00
   15
@@ -80,7 +87,7 @@ def compute_bsyn(set, ind, modelOpacFile, specResultFile, nlteInfoFile=None):
 """
     if not isinstance(nlteInfoFile,  type(None)):
         bsyn_config = bsyn_config + f"'NLTEINFOFILE:' '{nlteInfoFile}' \n"
-
+ 
     bsyn_config = bsyn_config +\
             f"'INDIVIDUAL ABUNDANCES:'   '{len(set.inputParams['elements'])}' \n"
     for el in set.inputParams['elements']:
@@ -116,7 +123,10 @@ def create_NlteInfoFile(filePath, set, i):
                 if not isinstance(depart_file, type(None)):
                     model_atom_id = set.inputParams['elements'][el]['modelAtom'].split('/')[-1]
                     nlte_info_file.write(F"{Z}  '{el}'  'nlte' '{model_atom_id}'  '{depart_file}' 'ascii' \n")
-                else:  return False
+                else:
+                    if set.debug:
+                        print(f"departure file doesn't exist for {el} at i = {i}. No spectrum will be computed.")  
+                    return False
             else:
                 nlte_info_file.write(F"{Z}  '{el}'  'lte' ' '  ' ' 'ascii' \n")
         return True
@@ -126,7 +136,7 @@ def parallel_worker(arg):
     Run TS on a subset of input parameters (== ind)
     """
     set, ind = arg
-    tempDir = f"{set.cwd}/{min(ind)}_{max(ind)}/"
+    tempDir = f"{set.cwd}/job{min(ind)}_{max(ind)}/"
     mkdir(tempDir)
     print(f"Working on input parameters {ind}...")
     for i in ind:
@@ -139,6 +149,7 @@ def parallel_worker(arg):
             atmos.temp, atmos.ne = 10**(atmos.temp), 10**(atmos.ne)
             atmos.depth_scale_type = 'TAU500'
             atmos.feh, atmos.logg = set.inputParams['feh'][i], set.inputParams['logg'][i]
+            atmos.spherical = False
             atmos.id = f"interpol_{i:05d}"
             atmos.path = f"{tempDir}/atmos.{atmos.id}"
             atmos.write(atmos.path, format = 'ts')
@@ -159,10 +170,9 @@ def parallel_worker(arg):
                 nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
                 departFilesExist = create_NlteInfoFile(nlteInfoFile, set, i)
                 if departFilesExist:
-                    compute_bsyn(set, i, modelOpacFile, specResultFile, nlteInfoFile)
-                else: print(f"nlte interpolation failed for one of the elemetns, skipping this point, no spectrum will be computed")
+                    compute_bsyn(set, i, atmos, modelOpacFile, specResultFile, nlteInfoFile)
             else: 
-                compute_bsyn(set, i, modelOpacFile, specResultFile, None)
+                compute_bsyn(set, i, atmos, modelOpacFile, specResultFile, None)
             if os.path.isfile(specResultFile):
                 shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
 

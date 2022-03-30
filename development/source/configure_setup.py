@@ -170,7 +170,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 path = self.cwd + f"/{el}_nlteDepFiles/"
                 mkdir(path)
                 self.inputParams['elements'][el].update({'dirNLTE':path})
-
+        self.interpolator = {}
         atmDepthScale, interpolCoords = self.prepInterpolation_MA()
         self.interpolateAllPoints_MA()
         self.interpolator['modelAtm'] = None
@@ -193,7 +193,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         and prepare interpolating functions
         Store for future use
         """
-        self.interpolator = {'modelAtm' : None}
+        self.interpolator.update({'modelAtm' : None})
 
         " Over which parameters (== coordinates) to interpolate?"
         interpolCoords = ['teff', 'logg', 'feh'] # order should match input file!
@@ -230,7 +230,9 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         nlteData = read_fullNLTE_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                     self.inputParams['elements'][el]['nlteAux'], \
                                     rescale=rescale, depthScale = depthScale )
-
+        mask = np.where(np.isnan(nlteData['depart']))
+        print(mask)
+        nlteData['depart'][mask] = 1
         " interpolate over abundance? "
         if min(nlteData['abund']) == max(nlteData['abund']):
             linearInterpAbund = False
@@ -330,36 +332,55 @@ points are outside of the model atmosphere grid. No computations will be done")
         self.inputParams['elements'][el].update({
                         'departFile' : np.full(self.inputParams['count'], None)
                                                 })
+        #print(f"accessing files for {el}")
+        #for i in range(self.inputParams['count']):
+        #    departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
+        #    if os.path.isfile(departFile):
+        #        self.inputParams['elements'][el]['departFile'][i] = departFile
+        #return
+
         for i in range(self.inputParams['count']):
             if not isinstance(self.inputParams['modelAtmInterpol'][i], type(None)):
-                abund = self.inputParams['elements'][el]['abund'][i]
-                print(f"interpolating to requested abundance A({el}) = {abund}")
+                departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
+                if not os.path.isfile(departFile):
+                    abund = self.inputParams['elements'][el]['abund'][i]
 
-                if self.interpolator['NLTE'][el]['linearInterpAbund']:
-                    x, y = [], []
-                    for j in range(len(self.interpolator['NLTE'][el]['abund'])):  
-                        point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][j][k] \
-                                 for k in self.interpolator['NLTE'][el]['normCoord'][j] if k !='abund']
-                        ab = self.interpolator['NLTE'][el]['abund'][j]
-                        v = self.interpolator['NLTE'][el]['interpFunction'][j](point)[0]
-                        x.append(ab)
-                        y.append(v)
-                    x = np.array(x)
-                    y = np.array(y)
-                    depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
-                else:
-                    point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
-                            for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
-                    if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
-                        point.append(abund)
-                    depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]     
+                    if self.interpolator['NLTE'][el]['linearInterpAbund']:
+                        x, y = [], []
+                        for j in range(len(self.interpolator['NLTE'][el]['abund'])):  
+                            point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][j][k] \
+                                     for k in self.interpolator['NLTE'][el]['normCoord'][j] if k !='abund']
+                            ab = self.interpolator['NLTE'][el]['abund'][j]
+                            v = self.interpolator['NLTE'][el]['interpFunction'][j](point)[0]
+                            if not np.isnan(v).any():
+                                x.append(ab)
+                                y.append(v)
+                        x = np.array(x)
+                        y = np.array(y)
+                        if len(x) > 0 and len(y) > 0:
+                            if len(x) > 2 and len(y) > 2:
+                                depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
+                            elif self.debug:
+                                print(f"not enough points to interpolate over abundance at i = {i}")
+                                depart = [np.nan]
+                        else:
+                            print(f"departures are NaNs at all abundance points for {el} at i = {i}")
+                            depart = [np.nan]
+                    else:
+                        point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
+                                for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
+                        if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
+                            point.append(abund)
+                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]     
 
-                if not np.isnan(depart).all():
-                    tau = depart[0]
-                    depart_coef = depart[1:]
-                    departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
-                    write_departures_forTS(departFile, tau, depart_coef, abund)
-                    self.inputParams['elements'][el]['departFile'][i] = departFile
+                    if not np.isnan(depart).all():
+                        tau = depart[0]
+                        depart_coef = depart[1:]
+                        write_departures_forTS(departFile, tau, depart_coef, abund)
+                        self.inputParams['elements'][el]['departFile'][i] = departFile
+                    else:
+                        if self.debug:
+                            print(f"depart is NaN at A({el}) = {abund} [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
 
     def createTSinputFlags(self):
         self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\
