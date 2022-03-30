@@ -120,7 +120,10 @@ class setup(object):
                 l = l.replace('[','').replace(']','').replace("'","")
                 el, files = l.split(':')[0].strip(), l.split(':')[-1].split(',')
                 files = [ f.strip() for f in files ]
+                if 'nlte_grids_path' in self.__dict__:
+                    files = [ f"{self.nlte_grids_path.strip()}/{f}" for f in files]
                 files = [ f.replace('./', self.cwd) if f.startswith('./') else f  for f in files]
+                print(files) 
                 d.update({el.capitalize() : {'nlteGrid' : files[0], 'nlteAux' : files[1], 'modelAtom' : files[2] }})
             self.nlte_config = d
 
@@ -167,7 +170,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 path = self.cwd + f"/{el}_nlteDepFiles/"
                 mkdir(path)
                 self.inputParams['elements'][el].update({'dirNLTE':path})
-
+        self.interpolator = {}
         atmDepthScale, interpolCoords = self.prepInterpolation_MA()
         self.interpolateAllPoints_MA()
         self.interpolator['modelAtm'] = None
@@ -178,7 +181,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 if self.inputParams['elements'][el]['nlte']:
                     self.prepInterpolation_NLTE(el,interpolCoords, rescale = True, depthScale = atmDepthScale)
                     self.interpolateAllPoints_NLTE(el)
-                    self.interpolator['NLTE'][el] = None
+                    del self.interpolator['NLTE'][el] 
 
         self.createTSinputFlags()
 
@@ -190,7 +193,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         and prepare interpolating functions
         Store for future use
         """
-        self.interpolator = {'modelAtm' : None}
+        self.interpolator.update({'modelAtm' : None})
 
         " Over which parameters (== coordinates) to interpolate?"
         interpolCoords = ['teff', 'logg', 'feh'] # order should match input file!
@@ -217,6 +220,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         self.interpolator['modelAtm'] = {'interpFunction' : interpFunction, \
                                         'normCoord' : normalisedCoord, \
                                         'hull': hull}
+        del modelAtmGrid
         return atmDepthScale, interpolCoords
 
     def prepInterpolation_NLTE(self, el, interpolCoords, rescale = True, depthScale = None):
@@ -225,8 +229,10 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         " 0th element is tau, 1th-Nth are departures for N levels "
         nlteData = read_fullNLTE_grid( self.inputParams['elements'][el]['nlteGrid'], \
                                     self.inputParams['elements'][el]['nlteAux'], \
-                                    rescale=True, depthScale = depthScale )
-
+                                    rescale=rescale, depthScale = depthScale )
+        mask = np.where(np.isnan(nlteData['depart']))
+        print(mask)
+        nlteData['depart'][mask] = 1
         " interpolate over abundance? "
         if min(nlteData['abund']) == max(nlteData['abund']):
             linearInterpAbund = False
@@ -251,24 +257,38 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             else:
                 ind_abund = np.unique(nlteData['abund'] - nlteData['feh'])
             if self.debug: print(f"found {len(ind_abund)} unique abundances: {ind_abund}")
+            self.interpolator['NLTE'].update({ el : {'linearInterpAbund' : True, \
+            'abund': [], 'interpFunction':[], 'normCoord':[]  }} )
 
+            subGrids = {'abund':np.zeros(len(ind_abund)), 'nlteData':np.empty(len(ind_abund), dtype=dict)} 
+
+            for i in range(len(ind_abund)):
+                ab = ind_abund[i]            
+                if self.debug: 
+                    print(f"starting interpolation at A({el})={ab}")
+
+<<<<<<< HEAD
             subGrids = {'abund':[], 'nlteData': [] }
             for ab in ind_abund:
 
                 subGrids['abund'].append(ab)
+=======
+>>>>>>> 6f4961192f4cfe562ec21ef96d25504f9a55c48d
                 if el.lower() == 'fe':
-                    mask = np.where(nlteData['abund'] == ab)[0]
+                    mask = np.where( np.abs(nlteData['abund'] - ab) < 0.001)[0]
                 else:
-                    mask = np.where(nlteData['abund'] - nlteData['feh'] == ab)[0]
-                subGrids['nlteData'].append({k: nlteData[k][mask] for k in nlteData})
-            nlteData = None
+                    mask = np.where( np.abs((nlteData['abund'] - nlteData['feh']) - ab) < 0.001)[0]
+                subGrids['abund'][i] = ab
+                subGrids['nlteData'][i] = {k: nlteData[k][mask] for k in nlteData} 
+            del nlteData
 
-        if linearInterpAbund:
-            self.interpolator['NLTE'].update({ el : {'linearInterpAbund' : True, 'abund': [], 'interpFunction':[], 'normCoord':[]} } )
-            for i in range(len( subGrids['abund'])):
+            for i in range(len(subGrids['abund'])):
                 ab = subGrids['abund'][i]
+<<<<<<< HEAD
                 if self.debug:
                     print(f"starting interpolation at A({el})={ab}")
+=======
+>>>>>>> 6f4961192f4cfe562ec21ef96d25504f9a55c48d
                 passed = preInterpolationTests(subGrids['nlteData'][i], interpolCoords_el, valueKey='depart', dataLabel=f"NLTE grid {el}")
                 if passed:
                     interpFunction, normalisedCoord  = NDinterpolateGrid(subGrids['nlteData'][i], interpolCoords_el,\
@@ -276,6 +296,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     self.interpolator['NLTE'][el]['abund'].append(ab)
                     self.interpolator['NLTE'][el]['interpFunction'].append(interpFunction)
                     self.interpolator['NLTE'][el]['normCoord'].append(normalisedCoord)
+            del subGrids['nlteData']
         else:
             passed = preInterpolationTests(nlteData, interpolCoords_el,\
                                                 valueKey='depart', dataLabel=f"NLTE grid {el}")
@@ -286,9 +307,9 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             self.interpolator['NLTE'].update( { el: {
                                                  'linearInterpAbund' : False, \
                                                  'interpFunction' : interpFunction, \
-                                                 'normCoord' : normalisedCoord, 'hull':hull }
+                                                 'normCoord' : normalisedCoord}
                                              } )
-            nlteData = None
+            del nlteData
         #hull = Delaunay(np.array([ nlteData[k] /normalisedCoord[k] for k in interpolCoords_el ]).T)
 
 
@@ -323,8 +344,16 @@ points are outside of the model atmosphere grid. No computations will be done")
         self.inputParams['elements'][el].update({
                         'departFile' : np.full(self.inputParams['count'], None)
                                                 })
+        #print(f"accessing files for {el}")
+        #for i in range(self.inputParams['count']):
+        #    departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
+        #    if os.path.isfile(departFile):
+        #        self.inputParams['elements'][el]['departFile'][i] = departFile
+        #return
+
         for i in range(self.inputParams['count']):
             if not isinstance(self.inputParams['modelAtmInterpol'][i], type(None)):
+<<<<<<< HEAD
 
                 if self.interpolator['NLTE'][el]['linearInterpAbund']:
                     x, y = [], []
@@ -345,14 +374,48 @@ points are outside of the model atmosphere grid. No computations will be done")
                         abund = self.inputParams['elements'][el]['abund'][i]
                         point.append(abund)
                         depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
+=======
+                departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
+                if not os.path.isfile(departFile):
+                    abund = self.inputParams['elements'][el]['abund'][i]
 
-                if not np.isnan(depart).all():
-                    tau = depart[0]
-                    depart_coef = depart[1:]
-                    departFile = f"{self.inputParams['elements'][el]['dirNLTE']}/depart_{el}_{i}"
-                    write_departures_forTS(departFile, tau, depart_coef, abund)
-                    self.inputParams['elements'][el]['departFile'][i] = departFile
-        exit(0)
+                    if self.interpolator['NLTE'][el]['linearInterpAbund']:
+                        x, y = [], []
+                        for j in range(len(self.interpolator['NLTE'][el]['abund'])):  
+                            point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][j][k] \
+                                     for k in self.interpolator['NLTE'][el]['normCoord'][j] if k !='abund']
+                            ab = self.interpolator['NLTE'][el]['abund'][j]
+                            v = self.interpolator['NLTE'][el]['interpFunction'][j](point)[0]
+                            if not np.isnan(v).any():
+                                x.append(ab)
+                                y.append(v)
+                        x = np.array(x)
+                        y = np.array(y)
+                        if len(x) > 0 and len(y) > 0:
+                            if len(x) > 2 and len(y) > 2:
+                                depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
+                            elif self.debug:
+                                print(f"not enough points to interpolate over abundance at i = {i}")
+                                depart = [np.nan]
+                        else:
+                            print(f"departures are NaNs at all abundance points for {el} at i = {i}")
+                            depart = [np.nan]
+                    else:
+                        point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
+                                for k in self.interpolator['NLTE'][el]['normCoord'] if k !='abund']
+                        if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
+                            point.append(abund)
+                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]     
+>>>>>>> 6f4961192f4cfe562ec21ef96d25504f9a55c48d
+
+                    if not np.isnan(depart).all():
+                        tau = depart[0]
+                        depart_coef = depart[1:]
+                        write_departures_forTS(departFile, tau, depart_coef, abund)
+                        self.inputParams['elements'][el]['departFile'][i] = departFile
+                    else:
+                        if self.debug:
+                            print(f"depart is NaN at A({el}) = {abund} [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
 
     def createTSinputFlags(self):
         self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\

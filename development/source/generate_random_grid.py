@@ -21,8 +21,8 @@ if __name__ == '__main__':
     else:
         print("Usage: ./run_ts.py ./configFile.txt")
         exit()
-    set = setup(file = conf_file)
 
+    set = setup(file = conf_file)
     if set.nnode * set.ncpu > set.inputParams['count']:
         set.nnode = 1
         set.ncpu = set.inputParams['count']
