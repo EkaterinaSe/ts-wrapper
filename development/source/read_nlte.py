@@ -151,8 +151,8 @@ def get_parametes_from_NLTE_grids(path, atm = None):
             if atm.lower() in modelAtm.lower() or modelAtm.lower() in atm.lower():
                 read = True
             else:
-                read = False  
-        if read: 
+                read = False
+        if read:
             data = np.genfromtxt(aux_file, \
             dtype = [('atmos_id', 'str'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
                      ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
@@ -166,3 +166,13 @@ def get_parametes_from_NLTE_grids(path, atm = None):
             print(50*'-')
             print(f"A({element}) = {abund_range[0]:.3f} - {abund_range[1]:.3f}")
             print(50*'-' + '\n')
+
+
+
+def find_distance_to_point(point, grid):
+    """
+    Find a distance from every point in the grid to the supplied point
+    Return the coordinates and index of the closest point
+    """
+
+    

@@ -233,6 +233,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         mask = np.where(np.isnan(nlteData['depart']))
         print(mask)
         nlteData['depart'][mask] = 1
+
         " interpolate over abundance? "
         if min(nlteData['abund']) == max(nlteData['abund']):
             linearInterpAbund = False
@@ -257,7 +258,8 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             else:
                 ind_abund = np.unique(nlteData['abund'] - nlteData['feh'])
             if self.debug: print(f"found {len(ind_abund)} unique abundances: {ind_abund}")
-            self.interpolator['NLTE'].update({ el : {'linearInterpAbund' : True, \
+            self.interpolator['NLTE'].update({ el : {'linearInterpAbund' : True,
+            'nlteData' : nlteData, \
             'abund': [], 'interpFunction':[], 'normCoord':[]  }} )
 
             subGrids = {'abund':np.zeros(len(ind_abund)), 'nlteData':np.empty(len(ind_abund), dtype=dict)}
@@ -288,13 +290,16 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                     self.interpolator['NLTE'][el]['normCoord'].append(normalisedCoord)
             del subGrids['nlteData']
         else:
+            # TODO: treat abundance as individual parameter even if it's just one value, i.e. H
             passed = preInterpolationTests(nlteData, interpolCoords_el,\
                                                 valueKey='depart', dataLabel=f"NLTE grid {el}")
             if not passed:
+                print('grid can not be interpolated...')
                 exit()
             interpFunction, normalisedCoord  = NDinterpolateGrid(nlteData, interpolCoords_el,\
                                                 valueKey='depart', dataLabel=f"NLTE grid {el}")
             self.interpolator['NLTE'].update( { el: {
+                                                 'nlteData' : nlteData, \
                                                  'linearInterpAbund' : False, \
                                                  'interpFunction' : interpFunction, \
                                                  'normCoord' : normalisedCoord}
@@ -354,19 +359,15 @@ points are outside of the model atmosphere grid. No computations will be done")
                                      for k in self.interpolator['NLTE'][el]['normCoord'][j] if k !='abund']
                             ab = self.interpolator['NLTE'][el]['abund'][j]
                             v = self.interpolator['NLTE'][el]['interpFunction'][j](point)[0]
-                            if not np.isnan(v).any():
+                            if not np.isnan(v).all():
                                 x.append(ab)
                                 y.append(v)
                         x = np.array(x)
                         y = np.array(y)
-                        if len(x) > 0 and len(y) > 0:
-                            if len(x) > 2 and len(y) > 2:
-                                depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
-                            elif self.debug:
+                        if len(x) > 2 and len(y) > 2:
+                            depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
+                            if self.debug:
                                 print(f"not enough points to interpolate over abundance at i = {i}")
-                                depart = [np.nan]
-                        else:
-                            print(f"departures are NaNs at all abundance points for {el} at i = {i}")
                             depart = [np.nan]
                     else:
                         point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][k] \
@@ -383,6 +384,10 @@ points are outside of the model atmosphere grid. No computations will be done")
                     else:
                         if self.debug:
                             print(f"depart is NaN at A({el}) = {abund} [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
+                            print(f"attempting to find the closest point the in the grid of departure coefficients")
+                            exit()
+                        # self.interpolator['NLTE'][el]['normCoord'][j]
+
 
     def createTSinputFlags(self):
         self.ts_input = { 'PURE-LTE':'.false.', 'MARCS-FILE':'.false.', 'NLTE':'.false.',\
