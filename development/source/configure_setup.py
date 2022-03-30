@@ -254,7 +254,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
 
             subGrids = {'abund':[], 'nlteData': [] }
             for ab in ind_abund:
-                
+
                 subGrids['abund'].append(ab)
                 if el.lower() == 'fe':
                     mask = np.where(nlteData['abund'] == ab)[0]
@@ -267,7 +267,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
             self.interpolator['NLTE'].update({ el : {'linearInterpAbund' : True, 'abund': [], 'interpFunction':[], 'normCoord':[]} } )
             for i in range(len( subGrids['abund'])):
                 ab = subGrids['abund'][i]
-                if self.debug: 
+                if self.debug:
                     print(f"starting interpolation at A({el})={ab}")
                 passed = preInterpolationTests(subGrids['nlteData'][i], interpolCoords_el, valueKey='depart', dataLabel=f"NLTE grid {el}")
                 if passed:
@@ -328,7 +328,7 @@ points are outside of the model atmosphere grid. No computations will be done")
 
                 if self.interpolator['NLTE'][el]['linearInterpAbund']:
                     x, y = [], []
-                    for j in range(len(self.interpolator['NLTE'][el]['abund'])):  
+                    for j in range(len(self.interpolator['NLTE'][el]['abund'])):
                         point = [ self.inputParams[k][i] / self.interpolator['NLTE'][el]['normCoord'][j][k] \
                                  for k in self.interpolator['NLTE'][el]['normCoord'][j] if k !='abund']
                         ab = self.interpolator['NLTE'][el]['abund'][j]
@@ -344,7 +344,7 @@ points are outside of the model atmosphere grid. No computations will be done")
                     if 'abund' in self.interpolator['NLTE'][el]['normCoord']:
                         abund = self.inputParams['elements'][el]['abund'][i]
                         point.append(abund)
-                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]     
+                        depart = self.interpolator['NLTE'][el]['interpFunction'](point)[0]
 
                 if not np.isnan(depart).all():
                     tau = depart[0]
