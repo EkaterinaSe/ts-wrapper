@@ -134,7 +134,7 @@ def read_fullNLTE_grid(bin_file, aux_file, rescale=False, depthScale=None):
 
     # TODO: make sure that all departure coefficient are at the same tau scale
     # also, same as model atmospheres... i guess?
-def get_parametes_from_NLTE_grids(path):
+def get_parametes_from_NLTE_grids(path, atm = None):
     auxFiles = glob.glob(path + '/aux*.txt')
     print(f"Found the following auxiliarly files: {'  '.join(f.split('/')[-1] for f in auxFiles)}")
 
@@ -142,16 +142,22 @@ def get_parametes_from_NLTE_grids(path):
         print(f"reading {aux_file}...") 
         element = aux_file.split('_')[1].strip().capitalize()
         modelAtm = aux_file.split('_')[2].strip()
-        data = np.genfromtxt(aux_file, \
-        dtype = [('atmos_id', 'str'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
-                 ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
-                 ('pointer', 'i8')])
-        if element.lower() != 'fe':
-            abund_range = [min(data['abund'] - data['feh']), max(data['abund'] - data['feh'])]
-        else:
-            abund_range = [min(data['abund']), max(data['abund'])]
+        if  isinstance(atm, type(None)):
+            read = True
+        elif atm.lower() in modelAtm.lower() or modelAtm.lower() in atm.lower():
+            read - True
+              
+        if read: 
+            data = np.genfromtxt(aux_file, \
+            dtype = [('atmos_id', 'str'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
+                     ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
+                     ('pointer', 'i8')])
+            if element.lower() != 'fe':
+                abund_range = [min(data['abund'] - data['feh']), max(data['abund'] - data['feh'])]
+            else:
+                abund_range = [min(data['abund']), max(data['abund'])]
 
-        print(f"{element} {modelAtm}")
-        print(50*'-')
-        print(f"A({element}) = {abund_range[0]:.3f} - {abund_range[1]:.3f}")
-        print(50*'-' + '\n')
+            print(f"{element} {modelAtm}")
+            print(50*'-')
+            print(f"A({element}) = {abund_range[0]:.3f} - {abund_range[1]:.3f}")
+            print(50*'-' + '\n')
