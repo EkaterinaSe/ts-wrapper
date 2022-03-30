@@ -139,7 +139,9 @@ def get_parametes_from_NLTE_grids(path):
     print(f"Found the following auxiliarly files: {'  '.join(f.split('/')[-1] for f in auxFiles)}")
 
     for aux_file in auxFiles:
-        element = aux_file.split('_')[2].strip().capitalize()
+        print(f"reading {aux_file}...") 
+        element = aux_file.split('_')[1].strip().capitalize()
+        modelAtm = aux_file.split('_')[2].strip()
         data = np.genfromtxt(aux_file, \
         dtype = [('atmos_id', 'str'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
                  ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
@@ -149,6 +151,7 @@ def get_parametes_from_NLTE_grids(path):
         else:
             abund_range = [min(data['abund']), max(data['abund'])]
 
-        print(f"{element}")
+        print(f"{element} {modelAtm}")
         print(50*'-')
-        print(f"A({element}) = {abund_range[0]} -- {abund_range[1]}")
+        print(f"A({element}) = {abund_range[0]:.3f} - {abund_range[1]:.3f}")
+        print(50*'-' + '\n')
