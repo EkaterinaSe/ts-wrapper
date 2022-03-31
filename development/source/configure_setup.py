@@ -8,7 +8,7 @@ from scipy.spatial import Delaunay
 from scipy.interpolate import interp1d
 # local
 from model_atm_interpolation import get_all_ma_parameters, NDinterpolateGrid,preInterpolationTests
-from read_nlte import read_fullNLTE_grid#, find_distance_to_point
+from read_nlte import read_fullNLTE_grid, find_distance_to_point
 from atmos_package import model_atmosphere
 from run_ts import write_departures_forTS
 import cProfile
@@ -74,7 +74,9 @@ def read_random_input_parameters(file):
         el.abund = values[:, i+4]
         input_par['elements'][elIDs[i]] =  el
 
-    input_par.update({'count' : len(input_par['teff'])})
+    input_par['count'] = len(input_par['teff'])
+    input_par['comments'] = np.empty(input_par['count'], dtype=str)
+
     if 'Fe' not in input_par['elements']:
         print(f"Warning: input contains [Fe/H], but no A(Fe)")
     absAbundCheck = np.array([ el.abund / 12. for el in input_par['elements'].values() ])
@@ -174,15 +176,16 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         if not os.path.isdir(self.spectraDir):
             os.mkdir(self.spectraDir)
 
+# TODO: write model atmospheres to files Here
+# than if no interpolation is required, those files can be passed directly to TS
 
         self.interpolate()
 
         "Temporary directories for NLTE files"
-        for el in self.inputParams['elements']:
-            if self.inputParams['elements'][el]['nlte']:
-                path = self.cwd + f"/{el}_nlteDepFiles/"
-                mkdir(path)
-                self.inputParams['elements'][el].update({'dirNLTE':path})
+        for el in self.inputParams['elements'].values():
+            if el.nlte:
+                el.departDir = self.cwd + f"/{el}_nlteDepFiles/"
+                mkdir(el.departDir)
 
 
         "Some formatting required by TS routines"
@@ -230,15 +233,14 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         as in each model atmosphere
         """
         # TODO: parallelise if more than 1 cpu is requested anyways
-        self.interpolator.update({'NLTE':{}})
         for elID, el in self.inputParams['elements'].items():
             if el.nlte:
 
                 self.prepInterpolation_NLTE(el, interpolCoords, \
                 rescale = True, depthScale = atmDepthScale)
                 self.interpolateAllPoints_NLTE(el)
-
-        del self.interpolator['NLTE']
+                del el.nlteData
+                del el.interpolator
 
 
     def prepInterpolation_MA(self):
@@ -282,9 +284,9 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         in nlteData 0th element is tau, 1th--Nth are departures for N levels
         """
         if self.debug:
-            print(f"reading grid {el.nlteGrid}")
+            print(f"reading grid {el.nlteGrid}...")
 
-        nlteData = read_fullNLTE_grid( el.nlteGrid, el.nlteAux, \
+        el.nlteData = read_fullNLTE_grid( el.nlteGrid, el.nlteAux, \
                                     rescale=rescale, depthScale = depthScale )
 
         """
@@ -293,16 +295,16 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         Here we omit [Fe/H] dimension but keep A(Fe)
         """
         interpolCoords_el = interpolCoords.copy()
-        if len(np.unique(nlteData['feh'])) == len(np.unique(nlteData['abund'])): # it is probably Fe
+        if len(np.unique(el.nlteData['feh'])) == len(np.unique(el.nlteData['abund'])): # it is probably Fe
             if el.isFe:
                 interpolCoords_el = [c for c in interpolCoords if c!='feh']
-                indiv_abund = np.unique(nlteData['abund'])
+                indiv_abund = np.unique(el.nlteData['abund'])
             else:
                 print(f"abundance is not a unique parameter for {el}, \
 but element is not Fe (for Fe abundance == [Fe/H] is acceptable)")
                 exit()
         else:
-            indiv_abund = np.unique(nlteData['abund'] - nlteData['feh'])
+            indiv_abund = np.unique(el.nlteData['abund'] - el.nlteData['feh'])
 
             """
             Here we use Delaunay triangulation to interpolate over
@@ -324,15 +326,14 @@ but element is not Fe (for Fe abundance == [Fe/H] is acceptable)")
             for i in range(len(indiv_abund)):
                 subGrids['abund'][i] = indiv_abund[i]
                 if el.isFe:
-                    mask = np.where( np.abs(nlteData['abund'] - \
+                    mask = np.where( np.abs(el.nlteData['abund'] - \
                                     subGrids['abund'][i]) < 0.001)[0]
                 else:
-                    mask = np.where( np.abs(nlteData['abund'] - \
-                            nlteData['feh'] - subGrids['abund'][i]) < 0.001)[0]
+                    mask = np.where( np.abs(el.nlteData['abund'] - \
+                            el.nlteData['feh'] - subGrids['abund'][i]) < 0.001)[0]
                 subGrids['nlteData'][i] = {
-                            k: nlteData[k][mask] for k in nlteData
+                            k: el.nlteData[k][mask] for k in el.nlteData
                 }
-            del nlteData
 
             """
             Run tests and eventually build an imnterpolating function
@@ -393,7 +394,6 @@ No computations will be done for those")
         """
         el.departFiles = np.full(self.inputParams['count'], None)
         for i in range(len(el.abund)):
-            abund = el.abund[i]
             x, y = [], []
             for j in range(len(el.interpolator['abund'])):
                 point = [ self.inputParams[k][i] / el.interpolator['normCoord'][j][k] \
@@ -410,35 +410,46 @@ No computations will be done for those")
             take departure coefficient at that abundance
             """
             if len(x) >= 2:
-                depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
-                if np.isnan(depart).all():
-                    print(x)
-                    print(y)
-            elif len(x) ==1:
-                ab = x[0]
+                depart = interp1d(x, y, fill_value='extrapolate', axis=0)(el.abund[i])
+            elif len(x) == 1:
                 depart = y[0]
-                if  np.abs( ab - abund ) > 0.5:
+                if  np.abs( x[0] - abund ) > 0.5:
                     print(f"WARNING: departure coefficients \
-are taken at A({el}) = {ab}, while requested A({el}) = {abund} at i = {i}")
+are taken at A({el}) = {ab}, while requested A({el}) = {el.abund[i]} at i = {i}")
             else:
-                if self.debug:
-                    print(f"not enough points to interpolate over abundance at i = {i}")
-                depart = [np.nan]
+                depart = np.nan
 
+            """
+            If interpolation failed e.g. if the point is outside of the grid,
+            find the closest point in the grid and take a departure coefficient
+            for that point
+            """
             if np.isnan(depart).all():
                 if self.debug:
                     print(f"departure coefficients are NaN \
 at A({el}) = {abund}, [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
                     print(f"attempting to find the closest point the in the grid of departure coefficients")
-                    exit()
-                # find_distance_to_point(point, grid, coordinates)
-                # self.interpolator['NLTE'][el]['normCoord'][j]
-
-                # tau = depart[0]
-                # depart_coef = depart[1:]
-                # write_departures_forTS(departFile, tau, depart_coef, abund)
-                # self.inputParams['elements'][el]['departFile'][i] = departFile
-                #
+                point = {}
+                for k in el.interpolator['normCoord'][0]:
+                    point[k] = self.inputParams[k][i]
+                print(point)
+                pos = find_distance_to_point(point, el.nlteGrid)
+                print(pos)
+                depart = el.nlteGrid[pos]
+                for k el.interpolator['normCoord'][0]:
+                    if ( np.abs(el.nlteGrid[k][pos] - point[k]) / point[k] ) > 0.5:
+                        self.inputParams['comments'][i] += f"departure coefficients \
+for {el.ID} were taken at point with the following parameters: \
+{'    '.join(f"{k} = {nlteGrid[k][pos]:.3f} \
+(off by {point[k] - nlteGrid[k][pos] : .3f })" \
+for k in el.interpolator['normCoord'][0])} \n"
+                        print(self.inputParams['comments'][i])
+            tau = depart[0]
+            depart_coef = depart[1:]
+            departFile = el.departDir + \
+                        f"/depCoeff_{el.ID}_{el.abund[i]:.3f}_{i}.dat"
+            write_departures_forTS(departFile, tau, depart_coef, abund)
+            el.departFiles[i] = departFile
 
 
 
