@@ -169,22 +169,22 @@ def get_parametes_from_NLTE_grids(path, atm = None):
 
 
 
-def find_distance_to_point(point, grid, coordinates):
-    """
-    Find a distance from every point in the grid to the supplied point
-    Return the coordinates and index of the closest point
-    """
-    # self.interpolator['NLTE'][el]['normCoord'][j]
-    dist = 0
-    for k in self.interpolator['NLTE'][el]['normCoord']:
-        dist += self.interpolator['NLTE'][el]['nlteData'][k]**2
-    dist = np.sqrt(dist)
-
-    print(np.shape(dist))
-    pos = np.where(dist == min(dist)))
-    print(len(pos))
-    if len(pos) > 1:
-        "take mean"
-        depart = np.mean(self.interpolator['NLTE'][el]['nlteData']['depart'][pos], axis=0)
-    else:
-        depart = self.interpolator['NLTE'][el]['nlteData']['depart'][pos]
+#def find_distance_to_point(point, grid, coordinates):
+#    """
+#    Find a distance from every point in the grid to the supplied point
+#    Return the coordinates and index of the closest point
+#    """
+#    # self.interpolator['NLTE'][el]['normCoord'][j]
+#    dist = 0
+#    for k in self.interpolator['NLTE'][el]['normCoord']:
+#        dist += self.interpolator['NLTE'][el]['nlteData'][k]**2
+#    dist = np.sqrt(dist)
+#
+#    print(np.shape(dist))
+#    pos = np.where(dist == min(dist)))
+#    print(len(pos))
+#    if len(pos) > 1:
+#        "take mean"
+#        depart = np.mean(self.interpolator['NLTE'][el]['nlteData']['depart'][pos], axis=0)
+#    else:
+#        depart = self.interpolator['NLTE'][el]['nlteData']['depart'][pos]
