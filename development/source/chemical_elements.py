@@ -26,7 +26,8 @@ def atomicZ(el):
 
 class ChemElement(object):
     def __init__(self, ID = ''):
-        self.z = atomicZ(ID)
+        self.ID = ID.strip().capitalize()
+        self.z = atomicZ(self.ID)
         self.nlte = False
 
         if ID.strip().lower() == 'fe' and self.z == 26:

@@ -8,7 +8,7 @@ from scipy.spatial import Delaunay
 from scipy.interpolate import interp1d
 # local
 from model_atm_interpolation import get_all_ma_parameters, NDinterpolateGrid,preInterpolationTests
-from read_nlte import read_fullNLTE_grid, find_distance_to_point
+from read_nlte import read_fullNLTE_grid#, find_distance_to_point
 from atmos_package import model_atmosphere
 from run_ts import write_departures_forTS
 import cProfile
@@ -77,7 +77,7 @@ def read_random_input_parameters(file):
     input_par.update({'count' : len(input_par['teff'])})
     if 'Fe' not in input_par['elements']:
         print(f"Warning: input contains [Fe/H], but no A(Fe)")
-    absAbundCheck = np.array([ el.abund / 12. for el in input_par['elements'] ])
+    absAbundCheck = np.array([ el.abund / 12. for el in input_par['elements'].values() ])
     if (absAbundCheck < 0.1).any():
         print(f"Warning: abundances must be supplied relative to H, on log12 scale. Please double check input file '{file}'")
 
@@ -137,7 +137,7 @@ class setup(object):
                 files = [ f.replace('./', self.cwd) if f.startswith('./') \
                                                     else f  for f in files]
 
-                if elID not in self.inputParams and self.debug:
+                if (elID not in self.inputParams['elements']) and self.debug:
                     print(f"NLTE data is provided for {elID}, \
 but it is not a free parameter in the input file {self.inputParams_file}.")
                 else:
@@ -213,7 +213,6 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         which are significantly large
         """
         atmDepthScale, interpolCoords = self.prepInterpolation_MA()
-        self.interpolator['modelAtm'] = None
         self.interpolateAllPoints_MA()
         del self.interpolator['modelAtm']
 
@@ -404,41 +403,42 @@ No computations will be done for those")
                 if not np.isnan(departAb).all():
                     x.append(ab)
                     y.append(departAb)
-                x, y = np.array(x), np.array(y)
-                """
-                Now interpolate linearly along abundance axis
-                If only one point is present (e.g. A(H) is always 12),
-                take departure coefficient at that abundance
-                """
-                if len(x) >= 2:
-                    depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
-                    if np.isnan(depart).all():
-                        print(x)
-                        print(y)
-                elif len(x) ==1:
-                    ab = x[0]
-                    depart = y[0]
-                    if  np.abs( ab - abund ) > 0.5:
-                        print(f"WARNING: departure coefficients \
-are taken at A({el}) = {ab}, while requested A({el}) = {abund} at i = {i}")
-                elif self.debug:
-                        print(f"not enough points to interpolate over abundance at i = {i}")
-                    depart = [np.nan]
-
+            x, y = np.array(x), np.array(y)
+            """
+            Now interpolate linearly along abundance axis
+            If only one point is present (e.g. A(H) is always 12),
+            take departure coefficient at that abundance
+            """
+            if len(x) >= 2:
+                depart = interp1d(x, y, fill_value='extrapolate', axis=0)(abund)
                 if np.isnan(depart).all():
-                    if self.debug:
-                        print(f"departure coefficients are NaN \
-at A({el}) = {abund}, [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
-                        print(f"attempting to find the closest point the in the grid of departure coefficients")
-                        exit()
-                    # find_distance_to_point(point, grid, coordinates)
-                    # self.interpolator['NLTE'][el]['normCoord'][j]
+                    print(x)
+                    print(y)
+            elif len(x) ==1:
+                ab = x[0]
+                depart = y[0]
+                if  np.abs( ab - abund ) > 0.5:
+                    print(f"WARNING: departure coefficients \
+are taken at A({el}) = {ab}, while requested A({el}) = {abund} at i = {i}")
+            else:
+                if self.debug:
+                    print(f"not enough points to interpolate over abundance at i = {i}")
+                depart = [np.nan]
 
-                    # tau = depart[0]
-                    # depart_coef = depart[1:]
-                    # write_departures_forTS(departFile, tau, depart_coef, abund)
-                    # self.inputParams['elements'][el]['departFile'][i] = departFile
-                    #
+            if np.isnan(depart).all():
+                if self.debug:
+                    print(f"departure coefficients are NaN \
+at A({el}) = {abund}, [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
+                    print(f"attempting to find the closest point the in the grid of departure coefficients")
+                    exit()
+                # find_distance_to_point(point, grid, coordinates)
+                # self.interpolator['NLTE'][el]['normCoord'][j]
+
+                # tau = depart[0]
+                # depart_coef = depart[1:]
+                # write_departures_forTS(departFile, tau, depart_coef, abund)
+                # self.inputParams['elements'][el]['departFile'][i] = departFile
+                #
 
 
 
