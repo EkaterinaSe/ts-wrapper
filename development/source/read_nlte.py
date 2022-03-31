@@ -170,11 +170,11 @@ def get_parametes_from_NLTE_grids(path, atm = None):
 
 
 def find_distance_to_point(point, grid):
-   """
-   Find a distance from every point in the grid to the supplied point
-   Return the coordinates and index of the closest point
-   """
-   dist = 0
+    """
+    Find a distance from every point in the grid to the supplied point
+    Return the coordinates and index of the closest point
+    """
+    dist = 0
     for k in point:
         dist += ((nlteGrid[k] - point[k])/max(nlteGrid[k]))**2
     dist = np.sqrt(dist)
@@ -187,17 +187,3 @@ to {' '.join(point[k] for k in point)}")
     else:
         return pos
 
-   # self.interpolator['NLTE'][el]['normCoord'][j]
-   dist = 0
-   for k in self.interpolator['NLTE'][el]['normCoord']:
-       dist += self.interpolator['NLTE'][el]['nlteData'][k]**2
-   dist = np.sqrt(dist)
-
-   print(np.shape(dist))
-   pos = np.where(dist == min(dist)))
-   print(len(pos))
-   if len(pos) > 1:
-       "take mean"
-       depart = np.mean(self.interpolator['NLTE'][el]['nlteData']['depart'][pos], axis=0)
-   else:
-       depart = self.interpolator['NLTE'][el]['nlteData']['depart'][pos]

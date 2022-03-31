@@ -436,13 +436,13 @@ at A({el}) = {abund}, [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
                 pos = find_distance_to_point(point, el.nlteGrid)
                 print(pos)
                 depart = el.nlteGrid[pos]
-                for k el.interpolator['normCoord'][0]:
+                for k in el.interpolator['normCoord'][0]:
                     if ( np.abs(el.nlteGrid[k][pos] - point[k]) / point[k] ) > 0.5:
                         self.inputParams['comments'][i] += f"departure coefficients \
-for {el.ID} were taken at point with the following parameters: \
-{'    '.join(f"{k} = {nlteGrid[k][pos]:.3f} \
-(off by {point[k] - nlteGrid[k][pos] : .3f })" \
-for k in el.interpolator['normCoord'][0])} \n"
+for {el.ID} were taken at point with the following parameters:\n"
+                        for k in el.interpolator['normCoord'][0]:
+                            self.inputParams['comments'][i] += f"{k} = {nlteGrid[k][pos]:.3f}\
+ (off by {point[k] - nlteGrid[k][pos] : .3f }) \n"
                         print(self.inputParams['comments'][i])
             tau = depart[0]
             depart_coef = depart[1:]
