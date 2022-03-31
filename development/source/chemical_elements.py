@@ -24,9 +24,11 @@ def atomicZ(el):
             return el_z[i]
 
 
-class element(object):
+class ChemElement(object):
     def __init__(self, ID = ''):
         self.z = atomicZ(ID)
+        self.nlte = False
+
         if ID.strip().lower() == 'fe' and self.z == 26:
             self.isFe = True
         else: self.isFe = False

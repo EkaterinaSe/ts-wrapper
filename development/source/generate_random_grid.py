@@ -23,13 +23,12 @@ if __name__ == '__main__':
         exit()
 
     set = setup(file = conf_file)
-    if set.nnode * set.ncpu > set.inputParams['count']:
-        set.nnode = 1
+    if set.ncpu > set.inputParams['count']:
         set.ncpu = set.inputParams['count']
         print(f"Requested more CPUs than jobs. \
-Will use {set.nnode} node and {set.ncpu} CPUs")
+Will use {set.ncpu} CPUs")
 
-    
+
 
     ind = np.arange(set.inputParams['count'])
     args = [ [set, ind[i::set.ncpu]] for i in range(set.ncpu)]
