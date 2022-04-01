@@ -179,7 +179,6 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
 # TODO: write model atmospheres to files Here
 # than if no interpolation is required, those files can be passed directly to TS
 
-        self.interpolate()
 
         "Temporary directories for NLTE files"
         for el in self.inputParams['elements'].values():
@@ -187,6 +186,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 el.departDir = self.cwd + f"/{el}_nlteDepFiles/"
                 mkdir(el.departDir)
 
+        self.interpolate()
 
         "Some formatting required by TS routines"
         self.createTSinputFlags()
@@ -451,7 +451,7 @@ for {el.ID} were taken at point with the following parameters:\n"
             depart_coef = depart[1:]
             departFile = el.departDir + \
                         f"/depCoeff_{el.ID}_{el.abund[i]:.3f}_{i}.dat"
-            write_departures_forTS(departFile, tau, depart_coef, abund)
+            write_departures_forTS(departFile, tau, depart_coef, el.abund[i])
             el.departFiles[i] = departFile
 
 

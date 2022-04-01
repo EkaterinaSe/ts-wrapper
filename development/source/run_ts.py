@@ -118,7 +118,7 @@ def create_NlteInfoFile(filePath, set, i):
         nlte_info_file.write('# atomic (non)LTE setup \n')
         for el in set.inputParams['elements'].values():
             if el.nlte:
-                if not isinstance(depart_file, type(None)):
+                if not isinstance(el.departFiles[i], type(None)):
                     model_atom_id = el.modelAtom.split('/')[-1]
                     nlte_info_file.write(F"{el.Z}  '{el.ID}'  'nlte' '{model_atom_id}'  '{el.departFiles[i]}' 'ascii' \n")
                 else:
