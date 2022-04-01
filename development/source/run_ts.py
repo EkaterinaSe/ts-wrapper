@@ -85,14 +85,15 @@ def compute_bsyn(set, ind, atmos, modelOpacFile, specResultFile, nlteInfoFile=No
   15
   1.30
 """
+# TODO: spherical models???
+
     if not isinstance(nlteInfoFile,  type(None)):
         bsyn_config = bsyn_config + f"'NLTEINFOFILE:' '{nlteInfoFile}' \n"
 
     bsyn_config = bsyn_config +\
             f"'INDIVIDUAL ABUNDANCES:'   '{len(set.inputParams['elements'])}' \n"
     for el in set.inputParams['elements']:
-        bsyn_config = bsyn_config + f" {set.inputParams['elements'][el]['Z']:.0f} {set.inputParams['elements'][el]['abund'][ind]:5.3f} \n"
-# TODO: spherical models???
+        bsyn_config = bsyn_config + f" {el.Z:.0f} {el.abund[ind]:5.3f} \n"
 
     """ Run bsyn """
     time0 = time.time()
@@ -172,6 +173,8 @@ def parallel_worker(arg):
                     compute_bsyn(set, i, atmos, modelOpacFile, specResultFile, nlteInfoFile)
                     if os.path.isfile(specResultFile):
                         shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
+            else:
+                compute_bsyn(set, i, atmos, modelOpacFile, specResultFile, None)
 
             os.remove(atmos.path)
             os.remove(modelOpacFile)
