@@ -30,6 +30,14 @@ class ChemElement(object):
         self.z = atomicZ(self.ID)
         self.nlte = False
 
+        """
+        If you find a nicer way to figur this out,
+        please change here and the rest of the code will manage
+        """
         if ID.strip().lower() == 'fe' and self.z == 26:
             self.isFe = True
         else: self.isFe = False
+
+        if ID.strip().lower() == 'h' and self.z == 1:
+            self.isH = True
+        else: self.isH = False

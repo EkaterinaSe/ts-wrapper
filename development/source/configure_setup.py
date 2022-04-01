@@ -324,7 +324,7 @@ but element is not Fe (for Fe abundance == [Fe/H] is acceptable)")
             }
             for i in range(len(indiv_abund)):
                 subGrids['abund'][i] = indiv_abund[i]
-                if el.isFe:
+                if el.isFe or el.isH:
                     mask = np.where( np.abs(el.nlteData['abund'] - \
                                     subGrids['abund'][i]) < 0.001)[0]
                 else:
