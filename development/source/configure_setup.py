@@ -416,7 +416,7 @@ No computations will be done for those")
                 depart = interp1d(x, y, fill_value='extrapolate', axis=0)(el.abund[i])
             elif len(x) == 1:
                 depart = y[0]
-                if  np.abs( x[0] - abund ) > 0.5:
+                if  np.abs( x[0] - el.abund[i] ) > 0.5:
                     print(f"WARNING: departure coefficients \
 are taken at A({el}) = {ab}, while requested A({el}) = {el.abund[i]} at i = {i}")
             else:
