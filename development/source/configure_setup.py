@@ -294,16 +294,19 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         so one of the parameters needs to be excluded to avoid degeneracy
         Here we omit [Fe/H] dimension but keep A(Fe)
         """
-        interpolCoords_el = interpolCoords.copy()
         if len(np.unique(el.nlteData['feh'])) == len(np.unique(el.nlteData['abund'])): # it is probably Fe
             if el.isFe:
                 interpolCoords_el = [c for c in interpolCoords if c!='feh']
                 indiv_abund = np.unique(el.nlteData['abund'])
             else:
-                print(f"abundance is not a unique parameter for {el}, \
-but element is not Fe (for Fe abundance == [Fe/H] is acceptable)")
+                print(f"abundance of {el.ID} is coupled to metallicity, \
+but element is not Fe (for Fe A(Fe) == [Fe/H] is acceptable)")
                 exit()
+        elif len(np.unique(el.nlteData['abund'])) == 1 : # it is either H or no iteration ovr abundance was included in computations of NLTE grids
+                interpolCoords_el = interpolCoords.copy()
+                indiv_abund = np.unique(el.nlteData['abund'])
         else:
+            interpolCoords_el = interpolCoords.copy()
             indiv_abund = np.unique(el.nlteData['abund'] - el.nlteData['feh'])
 
             """
