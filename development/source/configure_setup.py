@@ -357,7 +357,7 @@ but element is not Fe (for Fe abundance == [Fe/H] is acceptable)")
                     el.interpolator['normCoord'].append(normalisedCoord)
                 else:
                     print("Failed pre-interpolation tests, see above")
-                    print(f"NLTE grid: {el}, A({el}) = ab")
+                    print(f"NLTE grid: {el.ID}, A({el.ID}) = {ab}")
                     exit()
             del subGrids['nlteData']
 
