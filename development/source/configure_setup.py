@@ -309,60 +309,60 @@ but element is not Fe (for Fe A(Fe) == [Fe/H] is acceptable)")
             interpolCoords_el = interpolCoords.copy()
             indiv_abund = np.unique(el.nlteData['abund'] - el.nlteData['feh'])
 
-            """
-            Here we use Delaunay triangulation to interpolate over
-            fund. parameters like Teff, log(g), [Fe/H], etc,
-            and direct linear interpolation for abundance,
-            since it is regularly spaced by construction.
-            This saves a lot of time.
-            """
-            el.interpolator = {
-                    'abund' : [], 'interpFunction' : [], 'normCoord' : []
+        """
+        Here we use Delaunay triangulation to interpolate over
+        fund. parameters like Teff, log(g), [Fe/H], etc,
+        and direct linear interpolation for abundance,
+        since it is regularly spaced by construction.
+        This saves a lot of time.
+        """
+        el.interpolator = {
+                'abund' : [], 'interpFunction' : [], 'normCoord' : []
+        }
+
+        """ Split the NLTE grid into chuncks of the same abundance """
+        subGrids = {
+                'abund':np.zeros(len(indiv_abund)), \
+                'nlteData':np.empty(len(indiv_abund), dtype=dict)
+        }
+        for i in range(len(indiv_abund)):
+            subGrids['abund'][i] = indiv_abund[i]
+            if el.isFe or el.isH:
+                mask = np.where( np.abs(el.nlteData['abund'] - \
+                                subGrids['abund'][i]) < 0.001)[0]
+            else:
+                mask = np.where( np.abs(el.nlteData['abund'] - \
+                        el.nlteData['feh'] - subGrids['abund'][i]) < 0.001)[0]
+            subGrids['nlteData'][i] = {
+                        k: el.nlteData[k][mask] for k in el.nlteData
             }
 
-            """ Split the NLTE grid into chuncks of the same abundance """
-            subGrids = {
-                    'abund':np.zeros(len(indiv_abund)), \
-                    'nlteData':np.empty(len(indiv_abund), dtype=dict)
-            }
-            for i in range(len(indiv_abund)):
-                subGrids['abund'][i] = indiv_abund[i]
-                if el.isFe or el.isH:
-                    mask = np.where( np.abs(el.nlteData['abund'] - \
-                                    subGrids['abund'][i]) < 0.001)[0]
-                else:
-                    mask = np.where( np.abs(el.nlteData['abund'] - \
-                            el.nlteData['feh'] - subGrids['abund'][i]) < 0.001)[0]
-                subGrids['nlteData'][i] = {
-                            k: el.nlteData[k][mask] for k in el.nlteData
-                }
+        """
+        Run tests and eventually build an imnterpolating function
+        for each sub-grid of constant abundance
+        Delete intermediate data
+        """
+        for i in range(len(subGrids['abund'])):
+            ab = subGrids['abund'][i]
+            print(ab, interpolCoords)
+            passed = preInterpolationTests(subGrids['nlteData'][i], \
+                                        interpolCoords_el, \
+                                        valueKey='depart', \
+                                        dataLabel=f"NLTE grid {el.ID}")
+            if passed:
+                interpFunction, normalisedCoord  = \
+                    NDinterpolateGrid(subGrids['nlteData'][i], \
+                        interpolCoords_el,\
+                        valueKey='depart', dataLabel=f"NLTE grid {el.ID}")
 
-            """
-            Run tests and eventually build an imnterpolating function
-            for each sub-grid of constant abundance
-            Delete intermediate data
-            """
-            for i in range(len(subGrids['abund'])):
-                ab = subGrids['abund'][i]
-                print(ab, interpolCoords)
-                passed = preInterpolationTests(subGrids['nlteData'][i], \
-                                            interpolCoords_el, \
-                                            valueKey='depart', \
-                                            dataLabel=f"NLTE grid {el.ID}")
-                if passed:
-                    interpFunction, normalisedCoord  = \
-                        NDinterpolateGrid(subGrids['nlteData'][i], \
-                            interpolCoords_el,\
-                            valueKey='depart', dataLabel=f"NLTE grid {el.ID}")
-
-                    el.interpolator['abund'].append(ab)
-                    el.interpolator['interpFunction'].append(interpFunction)
-                    el.interpolator['normCoord'].append(normalisedCoord)
-                else:
-                    print("Failed pre-interpolation tests, see above")
-                    print(f"NLTE grid: {el.ID}, A({el.ID}) = {ab}")
-                    exit()
-            del subGrids['nlteData']
+                el.interpolator['abund'].append(ab)
+                el.interpolator['interpFunction'].append(interpFunction)
+                el.interpolator['normCoord'].append(normalisedCoord)
+            else:
+                print("Failed pre-interpolation tests, see above")
+                print(f"NLTE grid: {el.ID}, A({el.ID}) = {ab}")
+                exit()
+        del subGrids['nlteData']
 
 
     def interpolateAllPoints_MA(self):
