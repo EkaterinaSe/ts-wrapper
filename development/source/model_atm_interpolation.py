@@ -118,6 +118,7 @@ def preInterpolationTests(data, interpol_coords, valueKey, dataLabel = 'default'
     for k in interpol_coords:
         if max(data[k]) == min(data[k]):
             print(f"Grid {dataLabel} is degenerate in parameter {k}")
+            print(F"Values: {np.unique(data[k])}")
             return False
 
     " Check for repetitive points within the requested coordinates "

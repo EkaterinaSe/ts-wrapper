@@ -73,7 +73,7 @@ def compute_bsyn(set, ind, atmos, modelOpacFile, specResultFile, nlteInfoFile=No
 'NFILES   :' '{set.ts_input['NFILES']}'
 {set.ts_input['LINELIST']}
 """
-    if atmos.spherical: 
+    if atmos.spherical:
         bsyn_config = bsyn_config + f"""\
 'SPHERICAL:'  '.true.'
 """
@@ -87,7 +87,7 @@ def compute_bsyn(set, ind, atmos, modelOpacFile, specResultFile, nlteInfoFile=No
 """
     if not isinstance(nlteInfoFile,  type(None)):
         bsyn_config = bsyn_config + f"'NLTEINFOFILE:' '{nlteInfoFile}' \n"
- 
+
     bsyn_config = bsyn_config +\
             f"'INDIVIDUAL ABUNDANCES:'   '{len(set.inputParams['elements'])}' \n"
     for el in set.inputParams['elements']:
@@ -116,19 +116,18 @@ def create_NlteInfoFile(filePath, set, i):
         # input NLTE departure file will be written in the cwd, so set path to:
         nlte_info_file.write(F" \n")
         nlte_info_file.write('# atomic (non)LTE setup \n')
-        for el in set.inputParams['elements']:
-            Z = set.inputParams['elements'][el]['Z']
-            if set.inputParams['elements'][el]['nlte'] :
-                depart_file = set.inputParams['elements'][el]['departFile'][i]
+        for el in set.inputParams['elements'].values():
+            if el.nlte:
                 if not isinstance(depart_file, type(None)):
-                    model_atom_id = set.inputParams['elements'][el]['modelAtom'].split('/')[-1]
-                    nlte_info_file.write(F"{Z}  '{el}'  'nlte' '{model_atom_id}'  '{depart_file}' 'ascii' \n")
+                    model_atom_id = el.modelAtom.split('/')[-1]
+                    nlte_info_file.write(F"{el.Z}  '{el.ID}'  'nlte' '{model_atom_id}'  '{el.departFiles[i]}' 'ascii' \n")
                 else:
                     if set.debug:
-                        print(f"departure file doesn't exist for {el} at i = {i}. No spectrum will be computed.")  
+                        print(f"departure file doesn't exist for {el.ID} \
+at A({el.ID}) = {el.abund[i]} (i = {i}). No spectrum will be computed.")
                     return False
             else:
-                nlte_info_file.write(F"{Z}  '{el}'  'lte' ' '  ' ' 'ascii' \n")
+                nlte_info_file.write(F"{el.Z}  '{el.ID}'  'lte' ' '  ' ' 'ascii' \n")
         return True
 
 def parallel_worker(arg):
@@ -159,8 +158,8 @@ def parallel_worker(arg):
 
             """ Compute the spectrum """
             specResultFile = f"{tempDir}/spec"
-            for el in set.inputParams['elements']:
-                specResultFile = specResultFile + f"_{el}{set.inputParams['elements'][el]['abund'][i]}"
+            for el in set.inputParams['elements'].values():
+                specResultFile = specResultFile + f"_{el.ID}{el.abund[i]}"
             if set.nlte:
                 specResultFile = specResultFile + '_NLTE'
             else:
@@ -171,10 +170,8 @@ def parallel_worker(arg):
                 departFilesExist = create_NlteInfoFile(nlteInfoFile, set, i)
                 if departFilesExist:
                     compute_bsyn(set, i, atmos, modelOpacFile, specResultFile, nlteInfoFile)
-            else: 
-                compute_bsyn(set, i, atmos, modelOpacFile, specResultFile, None)
-            if os.path.isfile(specResultFile):
-                shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
+                    if os.path.isfile(specResultFile):
+                        shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
 
             os.remove(atmos.path)
             os.remove(modelOpacFile)

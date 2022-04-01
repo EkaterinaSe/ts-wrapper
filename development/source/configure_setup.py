@@ -241,7 +241,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 self.interpolateAllPoints_NLTE(el)
                 del el.nlteData
                 del el.interpolator
-
+# TODO: move the four routines below into model_atm_interpolation
 
     def prepInterpolation_MA(self):
         """
@@ -311,8 +311,7 @@ but element is not Fe (for Fe abundance == [Fe/H] is acceptable)")
             fund. parameters like Teff, log(g), [Fe/H], etc,
             and direct linear interpolation for abundance,
             since it is regularly spaced by construction.
-
-            This saves a looot of time.
+            This saves a lot of time.
             """
             el.interpolator = {
                     'abund' : [], 'interpFunction' : [], 'normCoord' : []
@@ -342,6 +341,7 @@ but element is not Fe (for Fe abundance == [Fe/H] is acceptable)")
             """
             for i in range(len(subGrids['abund'])):
                 ab = subGrids['abund'][i]
+                print(ab, interpolCoords)
                 passed = preInterpolationTests(subGrids['nlteData'][i], \
                                             interpolCoords_el, \
                                             valueKey='depart', \
