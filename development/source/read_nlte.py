@@ -104,7 +104,7 @@ def read_fullNLTE_grid(bin_file, aux_file, rescale=False, depthScale=None):
             print(f"to re-scale NLTE departure coefficient, please supply new depth scale to read_fullNLTE_grid() ")
             exit()
     aux = np.genfromtxt(aux_file, \
-    dtype = [('atmos_id', 'str'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
+    dtype = [('atmos_id', 'S500'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
              ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
              ('pointer', 'i8')])
 
@@ -176,14 +176,16 @@ def find_distance_to_point(point, grid):
     """
     dist = 0
     for k in point:
-        dist += ((nlteGrid[k] - point[k])/max(nlteGrid[k]))**2
+        print(k)
+        dist += ((grid[k] - point[k])/max(grid[k]))**2
     dist = np.sqrt(dist)
     pos = np.where(dist == min(dist) )[0]
     if len(pos) > 1:
-        print(f"Found more than one 'closets' points \
-to {' '.join(point[k] for k in point)}")
-        print(f"Please check that your requested coordinates are not degenerate.")
-        exit()
-    else:
-        return pos
+        comment = f"Found more than one 'closets' points to:"
+        comment += '\n'.join(f"{k} = {point[k]}" for k in point)
+        comment += f"{grid['atmos_id'][pos]}"
+        comment += f"Adopted depart. coefficients at pointer = {grid['pointer'][pos[0]]}"
+        print(comment)
+        return pos[0], comment
+    else: return pos, ''
 

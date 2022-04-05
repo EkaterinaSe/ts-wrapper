@@ -183,7 +183,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
         "Temporary directories for NLTE files"
         for el in self.inputParams['elements'].values():
             if el.nlte:
-                el.departDir = self.cwd + f"/{el}_nlteDepFiles/"
+                el.departDir = self.cwd + f"/{el.ID}_nlteDepFiles/"
                 mkdir(el.departDir)
 
         self.interpolate()
@@ -430,22 +430,22 @@ are taken at A({el}) = {ab}, while requested A({el}) = {el.abund[i]} at i = {i}"
             if np.isnan(depart).all():
                 if self.debug:
                     print(f"departure coefficients are NaN \
-at A({el}) = {abund}, [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
+at A({el}) = {el.abund[i]}, [Fe/H] = {self.inputParams['feh'][i]} at i = {i}")
                     print(f"attempting to find the closest point the in the grid of departure coefficients")
                 point = {}
                 for k in el.interpolator['normCoord'][0]:
                     point[k] = self.inputParams[k][i]
-                print(point)
-                pos = find_distance_to_point(point, el.nlteGrid)
-                print(pos)
-                depart = el.nlteGrid[pos]
+                if 'abund' not in point:
+                    point['abund'] = el.abund[i]
+                pos, comment = find_distance_to_point(point, el.nlteData)
+                depart = el.nlteData['depart'][pos]
                 for k in el.interpolator['normCoord'][0]:
-                    if ( np.abs(el.nlteGrid[k][pos] - point[k]) / point[k] ) > 0.5:
+                    if ( np.abs(el.nlteData[k][pos] - point[k]) / point[k] ) > 0.5:
                         self.inputParams['comments'][i] += f"departure coefficients \
 for {el.ID} were taken at point with the following parameters:\n"
                         for k in el.interpolator['normCoord'][0]:
-                            self.inputParams['comments'][i] += f"{k} = {nlteGrid[k][pos]:.3f}\
- (off by {point[k] - nlteGrid[k][pos] : .3f }) \n"
+                            self.inputParams['comments'][i] += f"{k} = {el.nlteData[k][pos]}\
+ (off by {point[k] - el.nlteData[k][pos] }) \n"
                         print(self.inputParams['comments'][i])
             tau = depart[0]
             depart_coef = depart[1:]

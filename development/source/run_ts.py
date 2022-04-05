@@ -92,7 +92,7 @@ def compute_bsyn(set, ind, atmos, modelOpacFile, specResultFile, nlteInfoFile=No
 
     bsyn_config = bsyn_config +\
             f"'INDIVIDUAL ABUNDANCES:'   '{len(set.inputParams['elements'])}' \n"
-    for el in set.inputParams['elements']:
+    for el in set.inputParams['elements'].values():
         bsyn_config = bsyn_config + f" {el.Z:.0f} {el.abund[ind]:5.3f} \n"
 
     """ Run bsyn """
