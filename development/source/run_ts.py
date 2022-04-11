@@ -7,6 +7,7 @@ import numpy as np
 import pickle
 import glob
 import time
+import datetime
 # local
 import convolve
 from atmos_package import read_atmos_marcs, model_atmosphere
@@ -25,7 +26,7 @@ def compute_babsma(set, atmos):
     atmos (object):     object of model_atmosphere class, init before passing to this function
     """
 
-    modelOpacFile = set.ts_root + F"/opac{set.ts_input['LAMBDA_MIN']}_{set.ts_input['LAMBDA_MAX']}_AA_{atmos.id}"
+    modelOpacFile = set.ts_root + F"/opac{set.ts_input['LAMBDA_MIN']}_{set.ts_input['LAMBDA_MAX']}_AA_{atmos.id}_subjob_{set.jobID}"
 
     babsma_conf = F""" \
 'LAMBDA_MIN:'    '{set.ts_input['LAMBDA_MIN']:.3f}'
@@ -76,6 +77,10 @@ def compute_bsyn(set, ind, atmos, modelOpacFile, specResultFile, nlteInfoFile=No
     if atmos.spherical:
         bsyn_config = bsyn_config + f"""\
 'SPHERICAL:'  '.true.'
+  30
+  300.00
+  15
+  1.30
 """
     else:
         bsyn_config = bsyn_config + f"""\
@@ -136,9 +141,10 @@ def parallel_worker(arg):
     Run TS on a subset of input parameters (== ind)
     """
     set, ind = arg
-    tempDir = f"{set.cwd}/job{min(ind)}_{max(ind)}/"
+    tempDir = f"{set.cwd}/job_{set.jobID}_{min(ind)}_{max(ind)}/"
     mkdir(tempDir)
-    print(f"Working on input parameters {ind}...")
+    today = datetime.date.today().strftime("%b-%d-%Y")
+
     for i in ind:
         # create model atmosphere and run babsma on it
         atmos = model_atmosphere()
@@ -150,7 +156,7 @@ def parallel_worker(arg):
             atmos.depth_scale_type = 'TAU500'
             atmos.feh, atmos.logg = set.inputParams['feh'][i], set.inputParams['logg'][i]
             atmos.spherical = False
-            atmos.id = f"interpol_{i:05d}"
+            atmos.id = f"interpol_{i:05d}_{set.jobID}"
             atmos.path = f"{tempDir}/atmos.{atmos.id}"
             atmos.write(atmos.path, format = 'ts')
 
@@ -158,24 +164,44 @@ def parallel_worker(arg):
             modelOpacFile = compute_babsma(set, atmos)
 
             """ Compute the spectrum """
-            specResultFile = f"{tempDir}/spec"
-            for el in set.inputParams['elements'].values():
-                specResultFile = specResultFile + f"_{el.ID}{el.abund[i]}"
+            specResultFile = f"{tempDir}/spec_{set.jobID}_{i}"
             if set.nlte:
                 specResultFile = specResultFile + '_NLTE'
             else:
                 specResultFile = specResultFile + '_LTE'
 
+            header = f"computed with TS NLTE v.20 by E.Magg (emagg at mpia dot de) \n\
+Date: {today} \n\
+Input parameters: \n\
+"
+            for k in set.freeInputParams:
+                header += f"{k} = {set.inputParams[k][i]} \n"
+            for el in set.inputParams['elements'].values():
+                header += f"A({el.ID}) = {el.abund[i]} {['NLTE' if el.nlte else 'LTE']} \n"
+
+            #for el in set.inputParams['elements'].values():
+            #    specResultFile = specResultFile + f"_{el.ID}{el.abund[i]}"
+
             if set.nlte:
-                nlteInfoFile   = f"{tempDir}/NLTEinfoFile.txt"
+                nlteInfoFile   = f"{tempDir}/NLTEinfoFile_{set.jobID}.txt"
                 departFilesExist = create_NlteInfoFile(nlteInfoFile, set, i)
                 if departFilesExist:
                     compute_bsyn(set, i, atmos, modelOpacFile, specResultFile, nlteInfoFile)
-                    if os.path.isfile(specResultFile):
-                        shutil.move(specResultFile, f"{set.spectraDir}/{specResultFile.split('/')[-1]}" )
             else:
                 compute_bsyn(set, i, atmos, modelOpacFile, specResultFile, None)
 
+            """ Add header, comments and save to the common output directory """
+            if os.path.isfile(specResultFile) and os.path.getsize(specResultFile) > 0:
+                with open(f"{set.spectraDir}/{specResultFile.split('/')[-1]}", 'w') as moveSpec:
+                    for l in header.split('\n'):
+                        moveSpec.write('#' + l + '\n')
+                    for l in set.inputParams['comments'][i].split('\n'):
+                        moveSpec.write('#' + l + '\n')
+                    moveSpec.write('#\n')
+                    for l in open(specResultFile, 'r').readlines():
+                        moveSpec.write(l)
+                os.remove(specResultFile)
+            """ Clean up """
             os.remove(atmos.path)
             os.remove(modelOpacFile)
             os.remove(modelOpacFile+'.mod')

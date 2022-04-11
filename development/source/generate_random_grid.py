@@ -18,11 +18,13 @@ from run_ts import parallel_worker
 if __name__ == '__main__':
     if len(argv) > 1:
         conf_file = argv[1]
+        jobID = argv[2]
     else:
         print("Usage: ./run_ts.py ./configFile.txt")
         exit()
 
     set = setup(file = conf_file)
+    set.jobID = jobID
     if set.ncpu > set.inputParams['count']:
         set.ncpu = set.inputParams['count']
         print(f"Requested more CPUs than jobs. \

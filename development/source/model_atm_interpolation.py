@@ -41,7 +41,7 @@ def get_all_ma_parameters(models_path, format='m1d', debug = False):
             d_sc_new = np.array(d_sc_new[0])
     else:
         print(f"Checking all model atmospheres under {models_path}")
-        d_sc_new = np.linspace(-5, 2, 100)
+        d_sc_new = np.linspace(-5, 2, 60)
 
         params = {
         'teff':[], 'logg':[], 'feh':[], 'vturb':[], 'file':[], 'structure':[], 'structure_keys':[], 'mass':[]\

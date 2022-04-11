@@ -99,7 +99,7 @@ def read_binary_grid(grid_file, pointer=1):
     return ndep, nk, depart, tau
 
 
-def read_fullNLTE_grid(bin_file, aux_file, rescale=False, depthScale=None):
+def read_fullNLTE_grid(bin_file, aux_file, rescale=False, depthScale=None, saveMemory = False):
     if rescale and isinstance(depthScale, type(None)):
             print(f"to re-scale NLTE departure coefficient, please supply new depth scale to read_fullNLTE_grid() ")
             exit()
@@ -109,8 +109,14 @@ def read_fullNLTE_grid(bin_file, aux_file, rescale=False, depthScale=None):
              ('pointer', 'i8')])
 
     data = {}
+    if saveMemory:
+        print(f"reading half the grid only")
+        pos = np.random.randint(0, len(aux['atmos_id']), size=int(len(aux['atmos_id'])/2))
     for k in aux.dtype.names:
-        data.update( { k : aux[k] } )
+        if saveMemory:
+            data.update( { k : aux[k][pos] })
+        else:
+            data.update( { k : aux[k] })
 
     # read and save each record from the binary file
     p = data['pointer'][0]
@@ -176,16 +182,15 @@ def find_distance_to_point(point, grid):
     """
     dist = 0
     for k in point:
-        print(k)
         dist += ((grid[k] - point[k])/max(grid[k]))**2
     dist = np.sqrt(dist)
     pos = np.where(dist == min(dist) )[0]
     if len(pos) > 1:
-        comment = f"Found more than one 'closets' points to:"
-        comment += '\n'.join(f"{k} = {point[k]}" for k in point)
-        comment += f"{grid['atmos_id'][pos]}"
-        comment += f"Adopted depart. coefficients at pointer = {grid['pointer'][pos[0]]}"
+        comment = f"Found more than one 'closets' points to: \n"
+        comment += '\n'.join(f"{k} = {point[k]}" for k in point) + '\n'
+        comment += f"{grid['atmos_id'][pos]}\n"
+        comment += f"Adopted depart. coefficients at pointer = {grid['pointer'][pos[0]]}\n"
         print(comment)
         return pos[0], comment
-    else: return pos, ''
+    else: return pos[0], ''
 
