@@ -9,9 +9,8 @@ import glob
 import time
 import datetime
 # local
-import convolve
 from atmos_package import read_atmos_marcs, model_atmosphere
-from read_nlte import grid_to_ts, write_departures_forTS
+from read_nlte import write_departures_forTS
 
 def mkdir(s):
     if os.path.isdir(s):

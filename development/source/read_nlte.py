@@ -5,77 +5,33 @@ from sys import exit
 import pickle
 import glob
 
-def grid_to_ts(grid_file, aux_file, atmos, abund):
+def write_departures_forTS(fileName, tau, depart, abund):
+    """
+    Writes NLTE departure coefficients into the file compatible
+    with TurboSpectrum
 
-    """ Find model atmosphere in the auxiliarly file """
-    aux_atmos = np.loadtxt(aux_file, usecols=(0), dtype=str)
-    aux_atmos = np.array([x.replace("'","").replace('"',"") for x in aux_atmos])
-    aux_abund, aux_pointer = np.loadtxt(aux_file, usecols=(7,8), unpack=True)
+    Parameters
+    ----------
+    fileName : str
+        name of the file in which to write the departure coefficients
+    tau : np.array
+        depth scale (e.g. TAU500nm)
+    depart : np.ndarray
+        departure coefficients
+    abund : float
+        chemical element abundance
+    """
 
-    if atmos.id in aux_atmos:
-        pos = np.where(aux_atmos == atmos.id)[0]
-        """ It will always pick the first record, that might need to be changed later
-        if e.g. Vmic is included """
-        pos1 = np.where(np.abs(aux_abund[pos]-abund) == min(np.abs(aux_abund[pos]-abund)))[0][0]
-        pointer = int(aux_pointer[pos][pos1])
-
-
-    else:
-        print("Can't find atmos in aux file. Stopped")
-        exit(1)
-
-    if np.abs(aux_abund[pos][pos1]-abund) > 0.1:
-        print(F"Warning: abundance for NLTE departure coefficients: {aux_abund[pos][pos1]:.3f}")
-        print(F"Warning: {aux_abund[pos][pos1]-abund:.3f} dex different from target abundance: {abund:.3f}")
-
-    ndep, nk, depart, tau = read_binary_grid(grid_file, pointer)
-
-    if atmos.depth_scale_type.startswith('T'):
-        if atmos.ndep == len(tau):
-            diff = np.sqrt(np.sum( (tau - atmos.depth_scale)**2 ) )
-            if diff > 0.05:
-                print("Seems like depth scale in model atmosphere and departure file differ:")
-                print(F"sqrt(sum(d_atm - d_dep)**2) = {diff}. Stopped")
-                exit(1)
-            else:
-                # because TS has rather corrupt way of checking it..
-                tau = atmos.depth_scale.copy()
-        else:
-            print("NDEP in departure grid != NDEP in model atmosphere. Stopped.")
-            exit(1)
-
-
-
-    depFile = './nlte_dep.dat'
-    depart = depart.T
-    with open(depFile, 'w') as f:
-        for i in range(8):
-            f.write('# parameter 1.0 1.0\n')
-        f.write(F"{abund:.3f}\n")
-        f.write(F"{ndep:.0f}\n")
-        f.write(F"{nk:.0f}\n")
-        for t in tau:
-            f.write(F"{t}\n")
-        for i in range(ndep):
-            for j in range(nk):
-                f.write(F"{depart[i,j]}" + ' ') # separate numbers in lines with blank space
-            f.write('\n') # separate lines
-
-
-    return depFile
-
-def write_departures_forTS(filePath, tau, depart, abund):
     ndep = len(tau)
     nk = len(depart)
-    with open(filePath, 'w') as f:
-        # these comment lines have to be here for TS
-        # I can not help it, someone help me
+    with open(fileName, 'w') as f:
+        """  Comment lines below are requested by TS """
         for i in range(8):
             f.write('# parameter 1.0 1.0\n')
 
-        f.write(F"{abund:.3f}\n")
-        f.write(F"{ndep:.0f}\n")
-        f.write(F"{nk:.0f}\n")
+        f.write(f"{abund:.3f}\n")
+        f.write(f"{ndep:.0f}\n")
+        f.write(f"{nk:.0f}\n")
         for t in tau:
             f.write(F"{t:15.8E}\n")
 
@@ -84,7 +40,29 @@ def write_departures_forTS(filePath, tau, depart, abund):
 
 
 def read_binary_grid(grid_file, pointer=1):
-    """ Read a record from NLTE grid """
+    """
+    Reads a record at specified position from the binary NLTE grid
+    (grid of departure coefficients)
+
+    Parameters
+    ----------
+    grid_file : str
+        path to the binary NLTE grid
+    pointer : int
+        bitwise start of the record as read from the auxiliarly file
+
+    Returns
+    -------
+    ndep : int
+        number of depth points in the model atmosphere used to solve for NLTE
+    nk : int
+        number of energy levels in the model atom used to solved for NLTE
+    depart : array
+        NLTE departure coefficients of shape (ndep, nk)
+    tau : array
+        depth scale (e.g. TAU500nm) in the model atmosphere
+        used to solve for NLTE of shape (ndep)
+    """
     with open(grid_file, 'rb') as f:
         # -1 since Python stars at 0
         pointer = pointer - 1
@@ -100,85 +78,107 @@ def read_binary_grid(grid_file, pointer=1):
 
 
 def read_fullNLTE_grid(bin_file, aux_file, rescale=False, depthScale=None, saveMemory = False):
+    """
+    Reads the full binary NLTE grid of departure coefficients
+    Note: binary grids can reach up to 100 Gb in size, therefore it is
+    possible to only read half of the records
+    randomly distributed across the grid
+
+    Parameters
+    ----------
+    bin_file : str
+        path to the binary NLTE grid
+    aux_file : str
+        path to the complementary auxilarly file
+    rescale : boolean
+        whether or not to bring the departure coefficients onto a depth
+        scale different from the depth scale in the model atmosphere
+        used in solving for NLTE. False by default
+    depthScale : np.array
+        depth scale to which departure coefficients will be rescaled
+        if rescale is set to True
+    saveMemory : boolean
+        whether or not to save the memory by only reading random
+        half of the records in the NLTE grid
+
+    Returns
+    -------
+    data : dict
+        contains NLTE departure coefficients as well as the depth scale of the
+        model atmosphere and parameters used in RT
+        (e.g. Teff, log(g) of model atmosphere)
+    """
     if rescale and isinstance(depthScale, type(None)):
-            print(f"to re-scale NLTE departure coefficient, please supply new depth scale to read_fullNLTE_grid() ")
-            exit()
+            raise Warning(f"To re-scale NLTE departure coefficients, \
+please supply new depth scale.")
+
     aux = np.genfromtxt(aux_file, \
-    dtype = [('atmos_id', 'S500'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
-             ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
-             ('pointer', 'i8')])
+    dtype = [('atmos_id', 'S500'), ('teff','f8'), ('logg','f8'), \
+            ('feh', 'f8'), ('alpha', 'f8'), ('mass', 'f8'), \
+            ('vturb', 'f8'), ('abund', 'f8'), ('pointer', 'i8')])
 
     data = {}
     if saveMemory:
-        print(f"reading half the grid only")
-        pos = np.random.randint(0, len(aux['atmos_id']), size=int(len(aux['atmos_id'])/2))
-    for k in aux.dtype.names:
-        if saveMemory:
+        pos = np.random.randint(0, len(aux['atmos_id']), \
+                                size=int(len(aux['atmos_id'])/2))
+        for k in aux.dtype.names:
             data.update( { k : aux[k][pos] })
-        else:
+    else:
+        for k in aux.dtype.names:
             data.update( { k : aux[k] })
-
-    # read and save each record from the binary file
+    """
+    Get size of records from the first records
+    assuming same size across the grid (i.e. model atmospheres had the same
+    depth dimension and same model atom was used consistently)
+    """
     p = data['pointer'][0]
     ndep, nk, depart, tau = read_binary_grid(bin_file, pointer=p)
-    if ndep > 500:
-       print(f"found large chunck of data with ndep={ndep} at pointer = {pointer} ")
-       exit()
     if rescale:
         departShape = ( len(data['pointer']), nk+1, len(depthScale))
     else:
         departShape = ( len(data['pointer']), nk+1, ndep)
-    data.update( { 'depart' : np.full(departShape, np.nan) } )
+    data.update( {
+                'depart' : np.full(departShape, np.nan),
+                'depthScale' : np.full(departShape[-1], np.nan)
+                } )
     for i in range(len( data['pointer'])):
         p = data['pointer'][i]
         ndep, nk, depart, tau = read_binary_grid(bin_file, pointer=p)
         if rescale:
-            depart_new = np.full(  shape=(len(depthScale), nk), fill_value=1)
+            depart_new = np.full(shape=(len(depthScale), nk), fill_value=1)
             f_int = interp1d(tau, depart, fill_value='extrapolate')
             depart = f_int(depthScale)
             tau = depthScale
-        data['depart'][i] =  np.vstack([tau, depart])
 
+        data['depart'][i] = depart
+        data['depthScale'][i] = tau
     return data
-
-    # TODO: make sure that all departure coefficient are at the same tau scale
-    # also, same as model atmospheres... i guess?
-def get_parametes_from_NLTE_grids(path, atm = None):
-    auxFiles = glob.glob(path + '/aux*')
-    print(f"Found the following auxiliarly files: {'  '.join(f.split('/')[-1] for f in auxFiles)}")
-
-    for aux_file in auxFiles:
-        element = aux_file.split('_')[1].strip().capitalize()
-        modelAtm = aux_file.split('_')[2].strip()
-        if  isinstance(atm, type(None)):
-            read = True
-        else:
-            #print(aux_file, atm.lower(), modelAtm.lower())
-            if atm.lower() in modelAtm.lower() or modelAtm.lower() in atm.lower():
-                read = True
-            else:
-                read = False
-        if read:
-            data = np.genfromtxt(aux_file, \
-            dtype = [('atmos_id', 'str'), ('teff','f8'), ('logg','f8'), ('feh', 'f8'),\
-                     ('alpha', 'f8'), ('mass', 'f8'), ('vturb', 'f8'), ('abund', 'f8'), \
-                     ('pointer', 'i8')])
-            if element.lower() != 'fe' and  element.lower() != 'h':
-                abund_range = [min(data['abund'] - data['feh']), max(data['abund'] - data['feh'])]
-            else:
-                abund_range = [min(data['abund']), max(data['abund'])]
-
-            print(f"{element} {modelAtm}")
-            print(50*'-')
-            print(f"A({element}) = {abund_range[0]:.3f} - {abund_range[1]:.3f}")
-            print(50*'-' + '\n')
-
 
 
 def find_distance_to_point(point, grid):
     """
-    Find a distance from every point in the grid to the supplied point
-    Return the coordinates and index of the closest point
+
+    Find the closest record in the NLTE grid to the supplied point
+    based on quadratic distance.
+    If several records are at the same distance
+    (might happen if e.g. one abudnance was included twice),
+    the first one is picked
+
+    Parameters
+    ----------
+    point : dict
+        coordinates of the input point. Only coordinates provided here will
+        be used to compute the distance
+    grid : dict
+        NLTE grid of departure coefficients as read by read_fullNLTE_grid()
+
+    Returns
+    -------
+    pos : int
+        position of the closest point found in the grid
+    comment : str
+        notifies if more than one point at the minimum distance was found
+        and which one was picked
     """
     dist = 0
     for k in point:
@@ -189,8 +189,7 @@ def find_distance_to_point(point, grid):
         comment = f"Found more than one 'closets' points to: \n"
         comment += '\n'.join(f"{k} = {point[k]}" for k in point) + '\n'
         comment += f"{grid['atmos_id'][pos]}\n"
-        comment += f"Adopted depart. coefficients at pointer = {grid['pointer'][pos[0]]}\n"
-        print(comment)
+        comment += f"Adopted departure coefficients \
+at pointer = {grid['pointer'][pos[0]]}\n"
         return pos[0], comment
     else: return pos[0], ''
-

@@ -4,16 +4,18 @@ import shutil
 from sys import argv, exit
 import datetime
 import glob
-# local
-# from model_atm_interpolation import get_all_ma_parameters, NDinterpolateGrid,preInterpolationTests
-# from read_nlte import read_fullNLTE_grid, find_distance_to_point
-# from atmos_package import model_atmosphere
-# from run_ts import write_departures_forTS
-# import cProfile
-# import pstats
-#
+
 def atomicZ(el):
-    if os.path.isfile('./atomic_numbers.dat'):
+    """
+    Finds atomic number (Z) of the chemical element by comparing its name
+    to the list stored in ./atomic_numbers.dat
+
+    Parameters
+    ----------
+    el : str
+        element name e.g. 'Mg'
+    """
+    if os.path.abspath.isfile('./atomic_numbers.dat'):
         el_z = np.loadtxt('./atomic_numbers.dat', usecols=(0))
         el_id = np.loadtxt('./atomic_numbers.dat', usecols=(1), dtype=str)
     else:
@@ -25,15 +27,23 @@ def atomicZ(el):
 
 
 class ChemElement(object):
+    """
+    Class for handling individual chemical elements. Gets atomic number
+    and checks whether element is Fe or H when initialised
+
+    Parameters
+    ----------
+    ID : str
+        element name e.g. 'Fe'
+    """
     def __init__(self, ID = ''):
+
         self.ID = ID.strip().capitalize()
         self.Z = atomicZ(self.ID)
         self.nlte = False
 
-        """
-        If you find a nicer way to figur this out,
-        please change here and the rest of the code will manage
-        """
+        # TODO: If you find a nicer way to figure this out
+        # TODO: please change here and the rest of the code will manage
         if ID.strip().lower() == 'fe' and self.Z == 26:
             self.isFe = True
         else: self.isFe = False

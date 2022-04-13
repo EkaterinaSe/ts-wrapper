@@ -188,6 +188,10 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                 if not  os.path.isdir(el.departDir):
                     os.mkdir(el.departDir)
 
+        if depthScale not in self.__dict__:
+            self.depthScaleNew = np.linspace(-5, 2, 60)
+        else: self.depthScaleNew = np.array(depthScale[0], depthScale[1], depthScale[2])
+
         self.interpolate()
 
         "Some formatting required by TS routines"
@@ -248,11 +252,11 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                         doInterpolate = True
                         break
                     else:
-                        el.departFiles[i] = departFile 
+                        el.departFiles[i] = departFile
 
                 if doInterpolate:
                     self.prepInterpolation_NLTE(el, interpolCoords, \
-                        rescale = True, depthScale = atmDepthScale)
+                        rescale = True, depthScale = self.depthScaleNew)
                     self.interpolateAllPoints_NLTE(el)
                     del el.nlteData
                     del el.interpolator
@@ -272,7 +276,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
 
         "Model atmosphere grid"
         if self.debug: print("preparing model atmosphere interpolator...")
-        modelAtmGrid, atmDepthScale = get_all_ma_parameters(self.atmos_path, \
+        modelAtmGrid = get_all_ma_parameters(self.atmos_path,  self.depthScaleNew,\
                                         format = self.atmos_format, debug=self.debug)
         passed  = preInterpolationTests(modelAtmGrid, interpolCoords, \
                                         valueKey='structure', dataLabel = 'model atmosphere grid' )
@@ -291,7 +295,7 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
                                         'normCoord' : normalisedCoord, \
                                         'hull': hull}
         del modelAtmGrid
-        return atmDepthScale, interpolCoords
+        return interpolCoords
 
     def prepInterpolation_NLTE(self, el, interpolCoords, rescale = False, depthScale = None):
         """
@@ -303,6 +307,10 @@ To set up NLTE, use 'nlte_config' flag\n {50*'*'}")
 
         el.nlteData = read_fullNLTE_grid( el.nlteGrid, el.nlteAux, \
                                     rescale=rescale, depthScale = depthScale, saveMemory = self.saveMemory )
+        """ Stack departure coefficients and depth scale for consistent interpolation """
+        for i in range(len(el.nlteData['pointer'])):
+            el.nlteData['depart'][i] = np.vstack([el.nlteData['depthScale'][i], el.nlteData['depart'][i]])
+        del el.nlteData['depthScale']
 
         """
         If element is Fe, than [Fe/H] == A(Fe) with an offset,
