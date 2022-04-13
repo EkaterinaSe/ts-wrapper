@@ -175,8 +175,9 @@ class spectrum(object):
                     w = np.hstack((w, w[-1]))
                     f = np.hstack((f, f[-1]))
                     odd = True
-
+                # # TODO: size of the kernel needs to be estimated from the FWHM
                 macro_kernel = convolution.Model1DKernel( rad_tang(fwhm), x_size=len(w) )
+
                 f = convolution.convolve(f, macro_kernel, fill_value=1)
 
                 if odd:

@@ -2,7 +2,6 @@ import numpy as np
 import os
 # local
 from observations import *
-from model_atm_interpolation import interpolate_ma_grid
 """
 Setup that will be used to run TS
 """
